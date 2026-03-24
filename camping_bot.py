@@ -217,7 +217,8 @@ def main():
                 now = datetime.now(timezone.utc)
                 diff_mins = (now - last_run_time).total_seconds() / 60
                 
-                if diff_mins < interval_mins:
+                # GitHub Actions 크론잡의 지연 시간을 고려하여 -2분 마진 부여
+                if diff_mins < (interval_mins - 2):
                     print(f"아직 사용자 설정 실행 주기가 되지 않았습니다 (설정: {interval_mins}분 / 현재 경과: {diff_mins:.1f}분).")
                     return
             except Exception as e:

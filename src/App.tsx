@@ -22,7 +22,8 @@ import {
   RotateCcw,
   Edit2,
   Save,
-  Trash2
+  Trash2,
+  ChevronUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -155,6 +156,20 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [homeUrl, setHomeUrl] = useState('');
   const [workUrl, setWorkUrl] = useState('');
+
+  // --- Scroll to Top ---
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // --- Settings Edit States ---
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -1067,7 +1082,7 @@ export default function App() {
           )}
 
           {campgrounds.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${targetCamps.length > 0 ? 'pb-48' : 'pb-20'}`}>
               {campgrounds.map((camp, idx) => {
                 const naverMapUrl = `https://map.naver.com/v5/search/${encodeURIComponent(camp.facltNm)}`;
                 return (
@@ -1140,6 +1155,13 @@ export default function App() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 mb-6">
+                        <div className="flex items-center text-[10px] uppercase font-bold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md border border-indigo-100">
+                          <span className="relative flex h-2 w-2 mr-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                          </span>
+                          잔여석 직접확인 요망
+                        </div>
                         <div className="flex items-center gap-1 text-[10px] uppercase font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md">
                           <Tent className="w-3 h-3" /> 파쇄석
                         </div>
@@ -1215,6 +1237,19 @@ export default function App() {
           )}
         </div>
       </main>
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={scrollToTop}
+            className="fixed bottom-24 lg:bottom-12 right-6 z-[60] bg-[#141414] text-white p-3.5 rounded-full shadow-2xl hover:bg-[#5A5A40] transition-colors border border-white/20"
+          >
+            <ChevronUp className="w-6 h-6" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
