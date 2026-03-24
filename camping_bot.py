@@ -182,6 +182,7 @@ def send_telegram_msg(camp_info):
         "inline_keyboard": [
             [
                 {"text": "🏕️ 예약하기로 가기", "url": camp_info['res_url'] if camp_info['res_url'] else f"https://m.search.naver.com/search.naver?query={camp_info['name']}"},
+                {"text": "📱 앱에서 보기", "url": "https://love4rani.github.io/Camping-Sync/"}
             ]
         ]
     }
