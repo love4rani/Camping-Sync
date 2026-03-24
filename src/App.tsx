@@ -344,9 +344,13 @@ export default function App() {
       // 4. Final Filter
       setLoadingStatus('필터 조건 적용 중...');
       const filtered = withRealTimes.filter((item: any) => {
-        const content = (item.intro || '') + (item.featureNm || '') + (item.facltNm || '') + (item.lctCl || '');
-        const isTargetFloor = !requireStone || content.includes('파쇄석');
-        const isTargetParking = !requireParking || (content.includes('옆') || content.includes('주차'));
+        const content = (item.intro || '') + (item.featureNm || '') + (item.facltNm || '') + (item.lctCl || '') + (item.sbrsCl || '');
+        
+        const hasStone = content.includes('파쇄석') || Number(item.siteBottomCl2 || 0) > 0;
+        const isTargetFloor = !requireStone || hasStone;
+        
+        const hasParking = content.includes('옆') || content.includes('주차') || (item.induty || '').includes('자동차야영장') || content.includes('카라반');
+        const isTargetParking = !requireParking || hasParking;
         
         // Distance Filter
         const isWithinDist = item.timeHome <= distLimit && item.timeWork <= distLimit;
@@ -1149,7 +1153,7 @@ export default function App() {
                         ))}
                       </div>
 
-                      <div className="flex flex-col gap-2 relative z-10 w-full cursor-auto">
+                      <div className="flex gap-2 relative z-10 w-full cursor-auto mt-4 pt-4 border-t border-[#141414]/5">
                         {(() => {
                           let cleanResveUrl = camp.resveUrl || '';
                           const urlRegex = /(https?:\/\/[^\s,]+)/g;
@@ -1161,18 +1165,21 @@ export default function App() {
                           
                           return (
                             <>
+                              <a href={naverMapUrl} target="_blank" rel="noreferrer" className="flex-1 py-2.5 rounded-xl text-[11px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-colors bg-gray-100 text-[#141414]/70 hover:bg-gray-200 shadow-sm border border-gray-200">
+                                <MapPin className="w-3 h-3" /> 지도 보기
+                              </a>
+
                               <a 
                                 href={finalUrl} 
                                 target="_blank" 
                                 rel="noreferrer"
-                                className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${
+                                className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-colors shadow-sm ${
                                   isValidResve 
                                     ? "bg-[#141414] text-white hover:bg-[#5A5A40]" 
                                     : "bg-[#5A5A40] text-white hover:bg-[#4A4A30]"
                                 }`}
                               >
-                                {isValidResve ? "✅ 공식 예약사이트 연결" : "🔍 네이버로 예약/정보 검색"} 
-                                <ExternalLink className="w-3 h-3" />
+                                {isValidResve ? <><ExternalLink className="w-3 h-3" /> 공식예약</> : <><Search className="w-3 h-3" /> 네이버확인</>}
                               </a>
                               
                               {(() => {
@@ -1180,13 +1187,13 @@ export default function App() {
                                 return (
                                   <button 
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleTargetCamp(camp, finalUrl); }}
-                                    className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border ${
+                                    className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-colors border shadow-sm ${
                                       isTargeted 
-                                      ? "text-red-600 bg-red-50 hover:bg-red-100 border-red-200" 
+                                      ? "text-red-700 bg-red-50 hover:bg-red-100 border-red-200" 
                                       : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
                                     }`}
                                   >
-                                    {isTargeted ? <><X className="w-3 h-3" /> 감시 해제하기</> : <><Bell className="w-3 h-3" /> 우선 알림 켜기</>}
+                                    {isTargeted ? <><X className="w-3 h-3" /> 감시 끄기</> : <><Bell className="w-3 h-3" /> 알림 켜기</>}
                                   </button>
                                 );
                               })()}
