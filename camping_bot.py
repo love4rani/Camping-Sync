@@ -4,10 +4,29 @@ from bs4 import BeautifulSoup
 import time
 
 import os
+import json
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 # .env 파일 로드
 load_dotenv()
+
+API_URL = "https://script.google.com/macros/s/AKfycbyReQ-uGXRS2MwI2se5bRYPrcx15lewKXMlX4PtOqpuR8dKUzwC5ZieyrEoJIf9xZyE/exec"
+
+def get_settings():
+    try:
+        response = requests.get(API_URL, timeout=10)
+        return response.json()
+    except Exception as e:
+        print(f"설정 로드 실패: {e}")
+        return None
+
+def update_last_run_time():
+    try:
+        payload = {"lastRunTime": datetime.now(timezone.utc).isoformat()}
+        requests.post(API_URL, data=json.dumps(payload), headers={'Content-Type': 'text/plain'}, timeout=10)
+    except Exception as e:
+        print(f"마지막 실행시간 갱신 실패: {e}")
 
 # ==========================================
 # [설정] 환경변수 및 사용자 정보
@@ -146,15 +165,30 @@ def check_reservation_status(res_url):
 # ==========================================
 def send_telegram_msg(camp_info):
     text = (
-        f"⛺ [캠핑장 발견!]\n"
+        f"⛺ <b>[캠핑장 발견!]</b>\n"
         f"이름: {camp_info['name']}\n"
         f"위치: {camp_info['addr']}\n"
         f"이동시간: {camp_info['dist_info']}\n"
-        f"예약링크: {camp_info['res_url']}\n"
-        f"지금 바로 확인해보세요!"
+        f"\n지금 바로 비어있는지 폰으로 확인해보세요!"
     )
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": text}
+    
+    # 텔레그램 인라인 키보드 (버튼 2개 배치)
+    reply_markup = {
+        "inline_keyboard": [
+            [
+                {"text": "🏕️ 예약하기로 가기", "url": camp_info['res_url'] if camp_info['res_url'] else f"https://m.search.naver.com/search.naver?query={camp_info['name']}"},
+                {"text": "📱 앱으로 가기", "url": "campingsync://home"}
+            ]
+        ]
+    }
+    
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID, 
+        "text": text,
+        "parse_mode": "HTML",
+        "reply_markup": json.dumps(reply_markup)
+    }
     requests.post(url, json=payload)
 
 # ==========================================
@@ -163,18 +197,78 @@ def send_telegram_msg(camp_info):
 def main():
     print("시스템 가동 중...")
     
-    # 1. 필터링된 캠핑장 목록 가져오기
-    campgrounds = get_filtered_campgrounds()
-    print(f"조건에 맞는 캠핑장 {len(campgrounds)}개 발견.")
+    # 1. 앱에서 설정한 현재 상태(Google Sheets API) 불러오기
+    settings = get_settings()
+    if settings:
+        is_on = settings.get('isOn', True)
+        interval_mins = settings.get('intervalMins', 10)
+        target_camp = settings.get('targetCampUrl', '')
+        last_run_str = settings.get('lastRunTime', '')
+        
+        # 앱에서 토글로 끈 경우 즉시 파이썬 동작 정지
+        if not is_on:
+            print("앱에서 [자동 알림]이 비활성화 되어 있습니다. 스크래핑을 스킵하고 종료합니다.")
+            return
+            
+        # 가상 스케줄링 로직 (GitHub의 강제 주기 사이사이에 시간차단기 작동)
+        if last_run_str:
+            try:
+                last_run_time = datetime.fromisoformat(last_run_str.replace('Z', '+00:00'))
+                now = datetime.now(timezone.utc)
+                diff_mins = (now - last_run_time).total_seconds() / 60
+                
+                if diff_mins < interval_mins:
+                    print(f"아직 사용자 설정 실행 주기가 되지 않았습니다 (설정: {interval_mins}분 / 현재 경과: {diff_mins:.1f}분).")
+                    return
+            except Exception as e:
+                print(f"가상 스케줄링 타임라인 검증 오류: {e}")
+    else:
+        print("경고: 설정(API)을 가져오지 못해 기본 모드로 동작합니다.")
+        target_camp = ''
+        
+    # 시간이 다 되어서 넘어온 경우, 즉시 마지막 실행 시간을 구글에 업데이트
+    update_last_run_time()
+
+    campgrounds = []
     
+    # 2. 타겟팅 다중 모드 확인
+    if target_camp:
+        try:
+            # JSON 배열 파싱 시도
+            targets = json.loads(target_camp)
+            if isinstance(targets, list) and len(targets) > 0:
+                print(f"🎯 [다중 타겟팅 모드 작동 중] 총 {len(targets)}개의 대상을 감시합니다.")
+                for t in targets:
+                    if isinstance(t, dict):
+                        campgrounds.append({
+                            'name': t.get('name', '이름 없음'),
+                            'addr': '앱에서 다중 지정된 찜 캠핑장',
+                            'res_url': t.get('url', ''),
+                            'dist_info': '확인 불필요 (지정됨)'
+                        })
+        except Exception:
+            # JSON 파싱 실패시 하위 호환
+            if "|||" in target_camp:
+                name, res_url = target_camp.split("|||", 1)
+                print(f"🎯 [구버전 단일 타겟팅 작동 중] 대상: {name}")
+                campgrounds.append({
+                    'name': name,
+                    'addr': '앱에서 지정된 단독 캠핑장',
+                    'res_url': res_url,
+                    'dist_info': '확인 불필요 (단일 지정)'
+                })
+
+    if not campgrounds:
+        # 일반 광역 필터링 모드
+        campgrounds = get_filtered_campgrounds()
+        print(f"조건에 맞는 캠핑장 {len(campgrounds)}개 발견.")
+    
+    # 3. 실시간 예약 기능 체크
     for camp in campgrounds:
-        # 2. 실시간 예약 가능 여부 체크
         if check_reservation_status(camp['res_url']):
-            print(f"알림 전송: {camp['name']}")
-            # 3. 알림 전송
+            print(f"알림 전송 확정: {camp['name']}")
             send_telegram_msg(camp)
-            # API 과부하 방지를 위한 짧은 휴식
-            time.sleep(1)
+            time.sleep(1) # API 과부하를 막기 위해 대기
 
 if __name__ == "__main__":
     main()

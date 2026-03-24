@@ -68,8 +68,14 @@ export default function App() {
   const [workCoords, setWorkCoords] = useState({ lat: 37.4780439, lng: 126.8815648 }); // 금천구 가산동 (회사)
 
   // --- Performance Configs ---
-  const [fetchLimit, setFetchLimit] = useState(1000); // 전수 조사 개수 (기본 1000)
+  const [fetchLimit, setFetchLimit] = useState(100); // 전수 조사 개수 (기본 100)
   const [candidateLimit, setCandidateLimit] = useState(70); // 경로 계산 후보군 (기본 70)
+
+  // --- Bot/API Configs ---
+  const [apiUrl, setApiUrl] = useState('https://script.google.com/macros/s/AKfycbyReQ-uGXRS2MwI2se5bRYPrcx15lewKXMlX4PtOqpuR8dKUzwC5ZieyrEoJIf9xZyE/exec');
+  const [isBotOn, setIsBotOn] = useState(true);
+  const [botInterval, setBotInterval] = useState(10);
+  const [targetCamps, setTargetCamps] = useState<{name: string, url: string}[]>([]);
 
   // --- Persistence: Load from localStorage ---
   useEffect(() => {
@@ -84,8 +90,18 @@ export default function App() {
     const savedRequireParking = localStorage.getItem('camping_requireParking');
     const savedFetchLimit = localStorage.getItem('camping_fetchLimit');
     const savedCandidateLimit = localStorage.getItem('camping_candidateLimit');
+    const savedApiUrl = localStorage.getItem('camping_apiUrl');
+    const savedIsBotOn = localStorage.getItem('camping_isBotOn');
+    const savedBotInterval = localStorage.getItem('camping_botInterval');
+    const savedTargetCamps = localStorage.getItem('camping_targetCamps');
 
     if (savedApiKey) setApiKey(savedApiKey);
+    if (savedApiUrl) setApiUrl(savedApiUrl);
+    if (savedIsBotOn) setIsBotOn(savedIsBotOn === 'true');
+    if (savedBotInterval) setBotInterval(Number(savedBotInterval));
+    if (savedTargetCamps) {
+      try { setTargetCamps(JSON.parse(savedTargetCamps)); } catch (e) {}
+    }
     if (savedTelegramToken) setTelegramToken(savedTelegramToken);
     if (savedTelegramChatId) setTelegramChatId(savedTelegramChatId);
     if (savedHomeCoords) setHomeCoords(JSON.parse(savedHomeCoords));
@@ -124,7 +140,11 @@ export default function App() {
     localStorage.setItem('camping_distLimit', String(distLimit));
     localStorage.setItem('camping_fetchLimit', String(fetchLimit));
     localStorage.setItem('camping_candidateLimit', String(candidateLimit));
-  }, [apiKey, telegramToken, telegramChatId, homeCoords, workCoords, priceConfig, distConfig, requireStone, requireParking, priceLimit, distLimit, fetchLimit, candidateLimit]);
+    localStorage.setItem('camping_apiUrl', apiUrl);
+    localStorage.setItem('camping_isBotOn', String(isBotOn));
+    localStorage.setItem('camping_botInterval', String(botInterval));
+    localStorage.setItem('camping_targetCamps', JSON.stringify(targetCamps));
+  }, [apiKey, telegramToken, telegramChatId, homeCoords, workCoords, priceConfig, distConfig, requireStone, requireParking, priceLimit, distLimit, fetchLimit, candidateLimit, apiUrl, isBotOn, botInterval, targetCamps]);
   
   const [campgrounds, setCampgrounds] = useState<Campground[]>([]);
   const [totalFound, setTotalFound] = useState<number | null>(null);
@@ -145,6 +165,48 @@ export default function App() {
   const [tempPriceConfig, setTempPriceConfig] = useState(priceConfig);
   const [tempDistConfig, setTempDistConfig] = useState(distConfig);
   const [tempPerformance, setTempPerformance] = useState({ fetchLimit, candidateLimit });
+  const [tempApiUrl, setTempApiUrl] = useState(apiUrl);
+
+  // --- Sync to Google Sheets ---
+  const updateBotSettings = async (settingsOverrides: any) => {
+    if (!apiUrl) return;
+    try {
+      const payload = {
+        isOn: isBotOn,
+        intervalMins: botInterval,
+        targetCampUrl: "", // Reset target by default
+        ...settingsOverrides
+      };
+      // Send as text/plain to bypass CORS preflight
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.error("Failed to sync settings to Google Sheets", e);
+    }
+  };
+
+  const handleToggleBot = (newState: boolean) => {
+    setIsBotOn(newState);
+    updateBotSettings({ isOn: newState, targetCampUrl: JSON.stringify(targetCamps) });
+  };
+  
+  const toggleTargetCamp = (camp: Campground, clickUrl: string) => {
+    setIsBotOn(true);
+    setTargetCamps(prev => {
+      const exists = prev.find(t => t.name === camp.facltNm);
+      let newTargets;
+      if (exists) {
+        newTargets = prev.filter(t => t.name !== camp.facltNm);
+      } else {
+        newTargets = [...prev, { name: camp.facltNm, url: clickUrl }];
+      }
+      updateBotSettings({ isOn: true, targetCampUrl: JSON.stringify(newTargets) });
+      return newTargets;
+    });
+  };
 
   // --- Helper: Extract Lat/Lng from Google Maps URL ---
   const extractLatLng = (url: string, type: 'home' | 'work') => {
@@ -804,6 +866,79 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* Bot DB & Frequency Configs */}
+                    <div className="bg-[#F5F5F0]/50 p-6 rounded-3xl space-y-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-[10px] uppercase font-bold text-[#5A5A40]/60 flex items-center gap-2">
+                          <Bell className="w-3 h-3" /> 백그라운드 봇 알림 설정 (Google Sheets)
+                        </label>
+                      </div>
+                      
+                      {/* Bot Toggle */}
+                      <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#141414]/5 shadow-sm">
+                        <span className="text-xs font-bold">자동 알림 활성화</span>
+                        <div 
+                          onClick={() => handleToggleBot(!isBotOn)}
+                          className={`w-12 h-6 rounded-full cursor-pointer flex items-center px-1 transition-colors ${isBotOn ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                        >
+                          <motion.div 
+                            animate={{ x: isBotOn ? 24 : 0 }}
+                            className="w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Bot Interval */}
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-bold text-[#5A5A40]/40 uppercase">확인 주기 (분 단위)</span>
+                        <select 
+                          value={botInterval} 
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setBotInterval(val);
+                            updateBotSettings({ intervalMins: val });
+                          }}
+                          className="w-full bg-white rounded-xl px-3 py-3 text-sm font-bold focus:outline-none border border-[#141414]/5"
+                        >
+                          <option value={10}>매 10분마다 (추천)</option>
+                          <option value={30}>매 30분마다</option>
+                          <option value={60}>매 1시간마다</option>
+                          <option value={120}>매 2시간마다</option>
+                        </select>
+                      </div>
+
+                      {/* API URL Edit */}
+                      <div className="pt-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-[9px] uppercase font-bold text-[#5A5A40]/40">구글스프레드시트 DB 주소 (API URL)</label>
+                          {editingSection !== 'apiurl' ? (
+                            <button onClick={() => { setEditingSection('apiurl'); setTempApiUrl(apiUrl); }} className="text-[10px] font-bold text-[#5A5A40] flex items-center gap-1">
+                              <Edit2 className="w-3 h-3" /> 수정
+                            </button>
+                          ) : (
+                            <div className="flex gap-2">
+                              <button onClick={() => { setApiUrl(tempApiUrl); setEditingSection(null); }} className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                                <Save className="w-3 h-3" /> 저장
+                              </button>
+                              <button onClick={() => setEditingSection(null)} className="text-[10px] font-bold text-red-500">취소</button>
+                            </div>
+                          )}
+                        </div>
+                        {editingSection === 'apiurl' ? (
+                          <input 
+                            type="text" 
+                            value={tempApiUrl}
+                            onChange={(e) => setTempApiUrl(e.target.value)}
+                            className="w-full bg-white rounded-xl px-4 py-3 text-xs focus:outline-none border border-[#141414]/5"
+                          />
+                        ) : (
+                          <div className="text-[10px] font-mono text-[#141414]/40 bg-white p-3 rounded-xl border border-[#141414]/5 break-all max-h-12 overflow-hidden">
+                            {apiUrl ? apiUrl.substring(0, 45) + '...' : '미설정됨'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Performance Settings */}
                     <div className="bg-[#F5F5F0]/50 p-6 rounded-3xl space-y-4">
                       <div className="flex justify-between items-center">
@@ -877,6 +1012,38 @@ export default function App() {
               </p>
             </div>
           )}
+
+          <AnimatePresence>
+          {targetCamps.length > 0 && (
+            <motion.div 
+              initial={{ y: 100, opacity: 0, x: '-50%' }}
+              animate={{ y: 0, opacity: 1, x: '-50%' }}
+              exit={{ y: 100, opacity: 0, x: '-50%' }}
+              className="fixed bottom-6 left-1/2 z-50 w-[90%] max-w-2xl bg-white/95 backdrop-blur-lg border border-emerald-200 p-4 rounded-3xl shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-3 px-1">
+                <p className="text-xs font-bold text-emerald-800 flex items-center gap-2 uppercase tracking-widest">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  실시간 다중 감시 중 ({targetCamps.length}개)
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto px-1 pb-1">
+                {targetCamps.map(c => (
+                  <div key={c.name} className="bg-emerald-50 px-3 py-2 rounded-xl text-xs font-bold text-emerald-700 border border-emerald-200 shadow-sm flex items-center gap-2 transition-all hover:bg-emerald-100">
+                    {c.name}
+                    <button 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleTargetCamp({ facltNm: c.name } as Campground, c.url); }}
+                      className="text-emerald-400 hover:text-red-500 transition-colors ml-1 p-0.5 rounded-full hover:bg-white"
+                      title="감시 목록에서 제외"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+          </AnimatePresence>
 
           {loading && (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -982,33 +1149,48 @@ export default function App() {
                         ))}
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 relative z-10 w-full cursor-auto">
                         {(() => {
-                          // Extract URL if it's mixed with text or multiple URLs
                           let cleanResveUrl = camp.resveUrl || '';
                           const urlRegex = /(https?:\/\/[^\s,]+)/g;
                           const matches = cleanResveUrl.match(urlRegex);
-                          if (matches && matches.length > 0) {
-                            cleanResveUrl = matches[0];
-                          }
+                          if (matches && matches.length > 0) cleanResveUrl = matches[0];
 
                           const isValidResve = cleanResveUrl && cleanResveUrl.startsWith('http') && !cleanResveUrl.includes(window.location.hostname);
                           const finalUrl = isValidResve ? cleanResveUrl : naverMapUrl;
                           
                           return (
-                            <a 
-                              href={finalUrl} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${
-                                isValidResve 
-                                  ? "bg-[#141414] text-white hover:bg-[#5A5A40]" 
-                                  : "bg-[#5A5A40] text-white hover:bg-[#4A4A30]"
-                              }`}
-                            >
-                              {isValidResve ? "예약하기" : "네이버에서 예약/정보 확인"} 
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                            <>
+                              <a 
+                                href={finalUrl} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${
+                                  isValidResve 
+                                    ? "bg-[#141414] text-white hover:bg-[#5A5A40]" 
+                                    : "bg-[#5A5A40] text-white hover:bg-[#4A4A30]"
+                                }`}
+                              >
+                                {isValidResve ? "✅ 공식 예약사이트 연결" : "🔍 네이버로 예약/정보 검색"} 
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                              
+                              {(() => {
+                                const isTargeted = targetCamps.some(t => t.name === camp.facltNm);
+                                return (
+                                  <button 
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleTargetCamp(camp, finalUrl); }}
+                                    className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border ${
+                                      isTargeted 
+                                      ? "text-red-600 bg-red-50 hover:bg-red-100 border-red-200" 
+                                      : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
+                                    }`}
+                                  >
+                                    {isTargeted ? <><X className="w-3 h-3" /> 감시 해제하기</> : <><Bell className="w-3 h-3" /> 우선 알림 켜기</>}
+                                  </button>
+                                );
+                              })()}
+                            </>
                           );
                         })()}
                       </div>
