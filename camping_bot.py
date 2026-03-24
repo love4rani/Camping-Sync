@@ -15,16 +15,16 @@ API_URL = "https://script.google.com/macros/s/AKfycbyReQ-uGXRS2MwI2se5bRYPrcx15l
 
 def get_settings():
     try:
-        response = requests.get(API_URL, timeout=10)
+        response = requests.get(API_URL, timeout=(5, 10))  # (connect, read)
         return response.json()
     except Exception as e:
-        print(f"설정 로드 실패: {e}")
+        print(f"설정 로드 실패 (Google Sheets): {e}")
         return None
 
 def update_last_run_time():
     try:
         payload = {"lastRunTime": datetime.now(timezone.utc).isoformat()}
-        requests.post(API_URL, data=json.dumps(payload), headers={'Content-Type': 'text/plain'}, timeout=10)
+        requests.post(API_URL, data=json.dumps(payload), headers={'Content-Type': 'text/plain'}, timeout=(5, 10))
     except Exception as e:
         print(f"마지막 실행시간 갱신 실패: {e}")
 
@@ -35,8 +35,12 @@ GOCAMPING_API_KEY = os.getenv("GOCAMPING_API_KEY", "")  # 공공데이터포털 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
+print(f"[시작] GOCAMPING_API_KEY 설정: {'O' if GOCAMPING_API_KEY else 'X (누락!!)'}")
+print(f"[시작] TELEGRAM_TOKEN 설정: {'O' if TELEGRAM_TOKEN else 'X (누락!!)'}")
+print(f"[시작] TELEGRAM_CHAT_ID: {TELEGRAM_CHAT_ID if TELEGRAM_CHAT_ID else 'X (누락!!)'}")
+
 if not GOCAMPING_API_KEY or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-    print("경고: .env 파일에 필요한 환경변수가 누락되었습니다.")
+    print("[오류] 필요한 환경변수가 누락되었습니다. GitHub Secrets를 확인하세요.")
 
 # 사용자 위치 (위도, 경도) - 예: 서초구, 가산동
 HOME_COORDS = (37.459479, 127.025171)  # 집
@@ -84,7 +88,7 @@ def get_filtered_campgrounds():
     }
     
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=(5, 15))
         data = response.json()
         items = data.get('response', {}).get('body', {}).get('items', {}).get('item', [])
         
@@ -132,7 +136,7 @@ def check_reservation_status(res_url):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        response = requests.get(res_url, headers=headers, timeout=10)
+        response = requests.get(res_url, headers=headers, timeout=(5, 10))
         
         # 인코딩 문제 임시 해결
         response.encoding = response.apparent_encoding
@@ -171,25 +175,46 @@ def send_telegram_msg(camp_info):
         f"이동시간: {camp_info['dist_info']}\n"
         f"\n지금 바로 비어있는지 폰으로 확인해보세요!"
     )
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    
-    # 텔레그램 인라인 키보드 (버튼 2개 배치)
+    api_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+    # 인라인 키보드
     reply_markup = {
         "inline_keyboard": [
             [
                 {"text": "🏕️ 예약하기로 가기", "url": camp_info['res_url'] if camp_info['res_url'] else f"https://m.search.naver.com/search.naver?query={camp_info['name']}"},
-                {"text": "📱 앱으로 가기", "url": "campingsync://home"}
             ]
         ]
     }
-    
+
     payload = {
-        "chat_id": TELEGRAM_CHAT_ID, 
+        "chat_id": TELEGRAM_CHAT_ID,
         "text": text,
         "parse_mode": "HTML",
         "reply_markup": json.dumps(reply_markup)
     }
-    requests.post(url, json=payload)
+
+    try:
+        print(f"[텔레그램] 전송 시도 → chat_id={TELEGRAM_CHAT_ID}, 캠핑장={camp_info['name']}")
+        resp = requests.post(api_url, json=payload, timeout=15)
+        result = resp.json()
+        if result.get('ok'):
+            print(f"[텔레그램] ✅ 전송 성공!")
+        else:
+            print(f"[텔레그램] ❌ 전송 실패! 응답: {result}")
+            # Chat ID가 잘못됐을 경우 getUpdates로 올바른 ID 출력
+            if result.get('error_code') == 400:
+                updates_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
+                upd = requests.get(updates_url, timeout=10).json()
+                messages = upd.get('result', [])
+                if messages:
+                    print("[힌트] 봇에게 메시지를 보낸 채팅 목록:")
+                    for m in messages[-5:]:
+                        ch = m.get('message', {}).get('chat', {})
+                        print(f"  → chat_id={ch.get('id')}, type={ch.get('type')}, name={ch.get('first_name','')}{ch.get('title','')}")
+                else:
+                    print("[힌트] 봇에게 메시지한 기록이 없습니다. 먼저 텔레그램에서 봇에게 /start 를 보내주세요.")
+    except Exception as e:
+        print(f"[텔레그램] ❌ 전송 중 예외 발생: {e}")
 
 # ==========================================
 # 메인 실행 로직
@@ -259,17 +284,30 @@ def main():
                     'dist_info': '확인 불필요 (단일 지정)'
                 })
 
+    is_targeted_mode = bool(campgrounds)  # True면 앱에서 지정한 타겟 모드
+
     if not campgrounds:
         # 일반 광역 필터링 모드
         campgrounds = get_filtered_campgrounds()
         print(f"조건에 맞는 캠핑장 {len(campgrounds)}개 발견.")
-    
-    # 3. 실시간 예약 기능 체크
+
+    # 3. 알림 전송 로직
     for camp in campgrounds:
-        if check_reservation_status(camp['res_url']):
-            print(f"알림 전송 확정: {camp['name']}")
+        if is_targeted_mode:
+            # 앱에서 직접 지정한 캠핑장은 스크래핑 결과와 무관하게 무조건 알림 전송
+            # (예약 사이트들이 봇을 막기 때문에 스크래핑 결과는 신뢰 불가)
+            avail = check_reservation_status(camp['res_url'])
+            status_text = "확인 요망 (자동 감지 불가)" if not avail else "잔여석 감지됨!"
+            camp['dist_info'] = f"{camp['dist_info']} | 상태: {status_text}"
+            print(f"[타겟 알림] {camp['name']} → 전송 (스크래핑 결과: {'가능' if avail else '불가/차단'})")
             send_telegram_msg(camp)
-            time.sleep(1) # API 과부하를 막기 위해 대기
+        else:
+            # 일반 모드: 스크래핑 성공 시에만 전송
+            if check_reservation_status(camp['res_url']):
+                print(f"[일반 알림] {camp['name']} → 전송")
+                send_telegram_msg(camp)
+        time.sleep(1)
+
 
 if __name__ == "__main__":
     main()
