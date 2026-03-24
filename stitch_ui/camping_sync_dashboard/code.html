@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Camping-Sync | Digital Naturalist Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-fixed-variant": "#5c4127",
+              "inverse-primary": "#adcfb4",
+              "error-container": "#ffdad6",
+              "tertiary-container": "#47443e",
+              "primary-fixed": "#c8ebd0",
+              "primary": "#163422",
+              "tertiary-fixed-dim": "#cbc6bd",
+              "on-secondary": "#ffffff",
+              "on-secondary-fixed": "#2b1702",
+              "surface-variant": "#e3e2df",
+              "background": "#faf9f5",
+              "on-tertiary-fixed": "#1d1b16",
+              "secondary-fixed-dim": "#e6c09d",
+              "surface-container-highest": "#e3e2df",
+              "primary-container": "#2d4b37",
+              "outline": "#727972",
+              "secondary": "#76593c",
+              "on-error": "#ffffff",
+              "inverse-on-surface": "#f2f1ed",
+              "surface-container-low": "#f4f4f0",
+              "inverse-surface": "#2f312e",
+              "on-primary": "#ffffff",
+              "surface-container-high": "#e9e8e4",
+              "surface-container": "#efeeea",
+              "tertiary": "#302e28",
+              "surface-bright": "#faf9f5",
+              "tertiary-fixed": "#e8e2d9",
+              "secondary-container": "#fdd6b2",
+              "error": "#ba1a1a",
+              "on-tertiary-fixed-variant": "#494640",
+              "surface-tint": "#466550",
+              "on-secondary-container": "#785b3e",
+              "primary-fixed-dim": "#adcfb4",
+              "on-tertiary": "#ffffff",
+              "outline-variant": "#c2c8c0",
+              "on-error-container": "#93000a",
+              "on-primary-container": "#99baa1",
+              "surface": "#faf9f5",
+              "on-primary-fixed-variant": "#2f4d39",
+              "on-background": "#1b1c1a",
+              "on-surface": "#1b1c1a",
+              "on-surface-variant": "#424843",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed": "#ffdcbd",
+              "surface-dim": "#dbdad6",
+              "on-tertiary-container": "#b6b1a9",
+              "on-primary-fixed": "#022110"
+            },
+            fontFamily: {
+              "headline": ["Manrope", "sans-serif"],
+              "body": ["Manrope", "sans-serif"],
+              "label": ["Manrope", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface min-h-screen">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-40 bg-[#faf9f5] dark:bg-[#1b1c1a]">
+<div class="flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-[#163422] dark:text-[#adcfb4] active:scale-95 transition-transform duration-200" data-icon="menu">menu</button>
+<h1 class="font-manrope font-bold tracking-tight text-xl font-extrabold tracking-tighter text-[#163422] dark:text-[#adcfb4]">Camping-Sync</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-[#163422] dark:text-[#adcfb4] active:scale-95 transition-transform duration-200" data-icon="settings">settings</button>
+</div>
+</div>
+<div class="bg-[#f4f4f0] dark:bg-[#2d4b37]/20 h-px w-full"></div>
+</header>
+<main class="max-w-7xl mx-auto px-6 pt-8 pb-32">
+<!-- Hero Trip Pulse -->
+<section class="mb-10">
+<div class="bg-primary-container/80 backdrop-blur-xl rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 text-on-primary-container">
+<div>
+<span class="font-label text-xs uppercase tracking-[0.2em] opacity-80 mb-1 block">Live Monitoring</span>
+<h2 class="text-2xl font-bold tracking-tight text-white">Currently Monitoring 4 sites</h2>
+</div>
+<div class="flex gap-4 items-center overflow-x-auto hide-scrollbar">
+<div class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full whitespace-nowrap">
+<span class="material-symbols-outlined text-sm" data-icon="cloud">cloud</span>
+<span class="text-sm font-medium text-white">High Sierra: 68°F</span>
+</div>
+<div class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full whitespace-nowrap">
+<span class="material-symbols-outlined text-sm" data-icon="sync">sync</span>
+<span class="text-sm font-medium text-white">Last sync: 2m ago</span>
+</div>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+<!-- Filter Dashboard (Left Sidebar Desktop) -->
+<aside class="lg:col-span-3">
+<div class="sticky top-28 bg-surface-container rounded-xl p-8 flex flex-col gap-8">
+<div>
+<h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="tune">tune</span>
+                            Discovery Filters
+                        </h3>
+</div>
+<!-- Price Limit Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<label class="font-label text-sm text-on-surface-variant">Price Limit</label>
+<span class="font-bold text-primary">$120/nt</span>
+</div>
+<div class="relative w-full h-1 bg-outline-variant rounded-full">
+<div class="absolute top-0 left-0 h-full bg-primary w-3/4 rounded-full"></div>
+<div class="absolute top-1/2 left-3/4 -translate-y-1/2 w-5 h-5 bg-primary border-4 border-white rounded-full shadow-sm cursor-pointer"></div>
+</div>
+</div>
+<!-- Driving Distance Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<label class="font-label text-sm text-on-surface-variant">Driving Distance</label>
+<span class="font-bold text-primary">240 mi</span>
+</div>
+<div class="relative w-full h-1 bg-outline-variant rounded-full">
+<div class="absolute top-0 left-0 h-full bg-secondary w-1/2 rounded-full"></div>
+<div class="absolute top-1/2 left-1/2 -translate-y-1/2 w-5 h-5 bg-secondary border-4 border-white rounded-full shadow-sm cursor-pointer"></div>
+</div>
+</div>
+<!-- Feature Toggles -->
+<div class="space-y-3 pt-4">
+<label class="flex items-center justify-between cursor-pointer group">
+<span class="text-sm font-medium">Dog Friendly</span>
+<div class="w-10 h-5 bg-primary rounded-full relative transition-colors">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</label>
+<label class="flex items-center justify-between cursor-pointer group">
+<span class="text-sm font-medium">Near Water</span>
+<div class="w-10 h-5 bg-outline-variant rounded-full relative transition-colors">
+<div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</label>
+</div>
+<button class="w-full bg-primary text-on-primary py-4 rounded-full font-bold active:scale-95 transition-all mt-4">
+                        Apply Exploration
+                    </button>
+</div>
+</aside>
+<!-- Campsite Grid -->
+<div class="lg:col-span-9">
+<header class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<span class="text-primary font-bold text-sm tracking-widest uppercase">Curated For You</span>
+<h2 class="text-4xl font-extrabold tracking-tight mt-1">Available Retreats</h2>
+</div>
+<div class="flex gap-2">
+<button class="p-3 bg-surface-container-lowest rounded-full shadow-sm hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+</button>
+<button class="p-3 bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="list">list</span>
+</button>
+</div>
+</header>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Card 1 -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden hover:translate-y-[-4px] transition-all duration-300">
+<div class="relative h-64 overflow-hidden">
+<img alt="Pine Ridge Retreat" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" data-alt="misty morning in a pine forest with a canvas tent and soft golden sunlight filtering through trees" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAocU6yFl1hpNuIN-8Tau9-PKiHpsIxy02K5s927yheNqm0NzuoCdHKSK5qdyVwTGQ6CEuYVyGQuwlk8dUqe2jDniBcbsCy6zPM0Xju8MZd6mW7-pGISacA9Kpf4DOLkQKNusmkhvTqvfnWWxEwwOh81WbPcqYrvVMtPKYGl9XKzGwmFZcpi0194FG3W1cZXlhulibuiT2i2YKe9I_MLt0C-6LUY1V6e9ebobCRkBOGqP3JxDeOOxFsbnGM2bcu_2syO92hLO_7eBY"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="star" data-weight="fill">star</span>
+<span class="text-xs font-bold">4.9</span>
+</div>
+<button class="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="text-xl font-bold">Pine Ridge Retreat</h3>
+<span class="text-primary font-bold">$45/nt</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span>
+                                12.4 miles • Sierra National Forest
+                            </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">WiFi</span>
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">Pet-friendly</span>
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">Fire Pit</span>
+</div>
+<button class="w-full py-3 bg-primary text-white rounded-full font-bold hover:bg-primary-container transition-colors active:scale-[0.98]">
+                                Availability Check
+                            </button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden hover:translate-y-[-4px] transition-all duration-300">
+<div class="relative h-64 overflow-hidden">
+<img alt="Azure Lake Basin" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" data-alt="crystalline blue alpine lake surrounded by snow-capped peaks and rugged grey rocks in bright daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDM_vdmFtbgsuAoSM1CIsXQr9McIh1BX8ZbkdcvxwNAEg7xuIr6c6AFFZzi68AkvJgqFD03bbTs-vFA9mnVPwcwskUytCoDX9E2fzwzIyOlpgF9sP0hrS2nZQp2O2PDobFdocDQFzQZaJZMTU8cm6YEBric5lchUGK5nGGBuSDnzS7_xNy-59w6ux6GCm7Gg9ccZ00jVRySLQD4DkTkSr-egIrbqnZFs5pBwPFa77HI8vscOdpXKfL2pw9CCmj4x35auNwQF8FZQdI"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="star" data-weight="fill">star</span>
+<span class="text-xs font-bold">5.0</span>
+</div>
+<button class="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="text-xl font-bold">Azure Lake Basin</h3>
+<span class="text-primary font-bold">$62/nt</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span>
+                                48.2 miles • High Rockies
+                            </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">Waterfront</span>
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">Hiking Access</span>
+</div>
+<button class="w-full py-3 bg-secondary text-white rounded-full font-bold hover:opacity-90 transition-all active:scale-[0.98]">
+                                Notify Me
+                            </button>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden hover:translate-y-[-4px] transition-all duration-300">
+<div class="relative h-64 overflow-hidden">
+<img alt="Fern Canyon Grove" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" data-alt="towering redwood trees in a lush green canyon with dense ferns and soft dappled forest light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBLYcXIo9kefdvz0042oUngFh7WFHOdyk1yNUhR_uCrqlils66lT2xnCSRz597sdQag39fiNJ-D-DmTEkCEW8t1wMZmwkOgRSwoEiEuud7eCecbPDvsWaj5G0TV981c5EdaPFrtBx87cwqqG0RDKC7R05gj6O8YtdCw709bzCbBIjZT-n2OGtVGfUnrve8tYtgeDtzsfeaFBkoUqxZ90vTDE2J80KfANSMcJ0JHtrTR9rywEn30oh_IjFNUSgOZFuzgvYSVVz_m2s"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="star" data-weight="fill">star</span>
+<span class="text-xs font-bold">4.7</span>
+</div>
+<button class="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="text-xl font-bold">Fern Canyon Grove</h3>
+<span class="text-primary font-bold">$38/nt</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span>
+                                85.0 miles • Redwood State Park
+                            </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">Quiet Zone</span>
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">EV Charging</span>
+</div>
+<button class="w-full py-3 bg-primary text-white rounded-full font-bold hover:bg-primary-container transition-colors active:scale-[0.98]">
+                                Availability Check
+                            </button>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden hover:translate-y-[-4px] transition-all duration-300">
+<div class="relative h-64 overflow-hidden">
+<img alt="Desert Echo Point" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" data-alt="vast open desert landscape at sunset with Joshua trees and purple glowing sky" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxRh6Iq2zQaLFBSUHsaQ0IenpSZlnzs1secoJvgS4IoSWx-hWeuTIrbrKqcZZg3UYqnAiV0GtjBT_lo_DFRUnG5LpvBuz-liV1bzFJgsFIe70ceCZaq-qjuFtIxK6ho5hpSgOxudMWdnmMP6j8lPwwkMYV-JOG-i6FIkYoQdMJIJFTyzJcc4OBxUZFVuzxQgWnOuzJSTCxueJFvLoxCZaiIhElz2wEB7FIOQdb_IzjFOKUIJ1uX9lKfCbyckFLK0OQOZfOtZ5adH8"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="star" data-weight="fill">star</span>
+<span class="text-xs font-bold">4.8</span>
+</div>
+<button class="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="text-xl font-bold">Desert Echo Point</h3>
+<span class="text-primary font-bold">$30/nt</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span>
+                                122.1 miles • Joshua Tree
+                            </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">Stargazing</span>
+<span class="px-3 py-1 bg-surface-container text-xs font-medium rounded-full">Off-grid</span>
+</div>
+<button class="w-full py-3 bg-secondary text-white rounded-full font-bold hover:opacity-90 transition-all active:scale-[0.98]">
+                                Notify Me
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Shared Component JSON derived) -->
+<nav class="fixed bottom-6 left-0 right-0 z-50 flex justify-around items-center px-4 py-2 bg-[#e3e2df]/60 dark:bg-[#163422]/60 backdrop-blur-xl fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md rounded-[9999px] shadow-[0_8px_32px_rgba(22,52,34,0.04)]">
+<a class="bg-[#163422] dark:bg-[#adcfb4] text-white dark:text-[#163422] rounded-full p-3 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined block" data-icon="explore">explore</span>
+</a>
+<a class="text-[#424843] dark:text-[#c2c8c0] p-3 hover:opacity-80 transition-opacity active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined block" data-icon="notifications_active">notifications_active</span>
+</a>
+<a class="text-[#424843] dark:text-[#c2c8c0] p-3 hover:opacity-80 transition-opacity active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined block" data-icon="favorite">favorite</span>
+</a>
+<a class="text-[#424843] dark:text-[#c2c8c0] p-3 hover:opacity-80 transition-opacity active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined block" data-icon="person">person</span>
+</a>
+</nav>
+<!-- Floating Action Button Contextual (Suppressed on Sub-pages, here active) -->
+<button class="fixed bottom-24 right-6 md:right-12 p-5 bg-primary text-white rounded-full shadow-2xl active:scale-90 transition-all duration-300 group z-40">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+<span class="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-500 font-bold px-0 group-hover:px-2">New Alert</span>
+</button>
+</body></html>

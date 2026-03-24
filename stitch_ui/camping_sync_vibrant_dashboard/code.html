@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Camping-Sync | Adventure Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .vibe-gradient {
+            background: linear-gradient(135deg, #007439 0%, #6dfe9c 100%);
+        }
+        .soft-glow {
+            box-shadow: 0 8px 24px rgba(157, 79, 0, 0.08);
+        }
+        .chunky-shadow {
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "on-tertiary-fixed-variant": "#614700",
+                "tertiary-dim": "#715300",
+                "surface": "#fffbff",
+                "secondary-dim": "#8b4500",
+                "tertiary": "#815f00",
+                "surface-bright": "#fffbff",
+                "secondary": "#9d4f00",
+                "on-secondary": "#ffffff",
+                "inverse-on-surface": "#a09d8f",
+                "primary-dim": "#006632",
+                "surface-dim": "#e7e3ce",
+                "on-error-container": "#570008",
+                "on-secondary-fixed": "#552800",
+                "error-container": "#fb5151",
+                "on-tertiary": "#ffffff",
+                "outline-variant": "#bcb9ab",
+                "secondary-container": "#ffc69f",
+                "on-primary": "#ffffff",
+                "on-primary-fixed": "#004a22",
+                "secondary-fixed-dim": "#ffb37c",
+                "on-primary-fixed-variant": "#006a34",
+                "surface-variant": "#ece9d4",
+                "on-secondary-container": "#723800",
+                "error": "#c0262d",
+                "primary": "#007439",
+                "surface-container-high": "#f2eedb",
+                "surface-container-lowest": "#ffffff",
+                "on-surface-variant": "#666558",
+                "tertiary-fixed-dim": "#edb210",
+                "on-background": "#39382d",
+                "secondary-fixed": "#ffc69f",
+                "inverse-primary": "#6dfe9c",
+                "primary-fixed": "#6dfe9c",
+                "inverse-surface": "#0f0f06",
+                "primary-fixed-dim": "#5def8f",
+                "error-dim": "#9f0519",
+                "on-secondary-fixed-variant": "#7f3f00",
+                "outline": "#838174",
+                "tertiary-fixed": "#fcc025",
+                "on-tertiary-container": "#563e00",
+                "surface-tint": "#007439",
+                "surface-container": "#f8f4e2",
+                "on-tertiary-fixed": "#3d2b00",
+                "primary-container": "#6dfe9c",
+                "on-surface": "#39382d",
+                "on-error": "#ffffff",
+                "surface-container-highest": "#ece9d4",
+                "on-primary-container": "#005f2e",
+                "tertiary-container": "#fcc025",
+                "surface-container-low": "#fefae8",
+                "background": "#fffbff"
+              },
+              fontFamily: {
+                "headline": ["Plus Jakarta Sans"],
+                "body": ["Be Vietnam Pro"],
+                "label": ["Be Vietnam Pro"]
+              },
+              borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-low font-body text-on-surface min-h-screen pb-32">
+<!-- Top Navigation Shell -->
+<header class="bg-white/70 backdrop-blur-xl rounded-b-[2rem] sticky top-0 z-50 shadow-[0_8px_24px_rgba(157,79,0,0.08)] flex items-center justify-between px-6 py-4 w-full">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">forest</span>
+<h1 class="font-headline font-black text-2xl tracking-tight text-primary italic">Camping-Sync</h1>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-primary-container overflow-hidden hover:scale-105 transition-transform duration-200">
+<img alt="User Profile" data-alt="Close up portrait of a smiling young man with curly hair wearing a mustard yellow beanie and outdoor gear" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4D9dU0n_YMqQXP9LlFWahzxzn5wg-Hx3GWcZnY69Y6wwOwynNcFpyc6FQ-dl5rfoDpGODfTiFoyUbTT7WY1bJytwekaCQ4wlyIquPIhOfHoe6d7SyLETiVucjywh4v0LwUThGHzpSud8pEqhBDGPqRFaWICpSZXZqTGD7BzNEkEXxA1urb2OB9X7cPqAlU9BAVvFIIZPoDOdOuSG9PpxJ7N8mGaJPYXI4PuonVUNgMHAiVMrlhcUEqISECJ8CmY6C0NaY31cBROE"/>
+</div>
+</div>
+</header>
+<main class="px-6 pt-8 space-y-10">
+<!-- Welcome Hero Section -->
+<section class="space-y-2">
+<h2 class="font-headline font-extrabold text-4xl tracking-tight text-on-surface leading-tight">Find your next <span class="text-secondary italic underline decoration-tertiary-fixed decoration-4 underline-offset-4">vibe</span>.</h2>
+<p class="text-on-surface-variant font-medium">32 glamp-sites active near you today.</p>
+</section>
+<!-- Dynamic Controls Section (Filters) -->
+<section class="bg-surface-container-highest p-6 rounded-xl space-y-6">
+<div class="flex justify-between items-center">
+<h3 class="font-headline font-bold text-lg">Filter the Adventure</h3>
+<span class="material-symbols-outlined text-secondary">tune</span>
+</div>
+<div class="space-y-8">
+<!-- Price Limit Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="font-label font-bold text-sm tracking-wide uppercase text-on-surface-variant">Price Limit</label>
+<span class="font-headline font-extrabold text-primary">$150/night</span>
+</div>
+<div class="relative w-full h-3 bg-surface-container rounded-full">
+<div class="absolute top-0 left-0 h-full w-2/3 bg-secondary rounded-full"></div>
+<div class="absolute top-1/2 left-2/3 -translate-y-1/2 w-7 h-7 bg-white border-4 border-secondary rounded-full shadow-lg cursor-pointer"></div>
+</div>
+</div>
+<!-- Distance Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="font-label font-bold text-sm tracking-wide uppercase text-on-surface-variant">Driving Distance</label>
+<span class="font-headline font-extrabold text-primary">45 Miles</span>
+</div>
+<div class="relative w-full h-3 bg-surface-container rounded-full">
+<div class="absolute top-0 left-0 h-full w-1/3 bg-tertiary rounded-full"></div>
+<div class="absolute top-1/2 left-1/3 -translate-y-1/2 w-7 h-7 bg-white border-4 border-tertiary rounded-full shadow-lg cursor-pointer"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Campsite Cards Grid -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<h3 class="font-headline font-extrabold text-2xl tracking-tight">Top Social Sites</h3>
+<button class="text-primary font-bold text-sm underline decoration-2 underline-offset-4">View All</button>
+</div>
+<div class="grid grid-cols-1 gap-8">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden chunky-shadow group">
+<div class="relative h-64 overflow-hidden">
+<img alt="Luxury Glamping Tent" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A stylish canvas bell tent set up in a sun-drenched forest clearing with cozy outdoor furniture and hanging lanterns" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYrsA9ZSlKPdAIXcz9dgF1McvriocK_3DIKdnOUkwQkkF9c0EIOmrBHHIrW4PwAt6DA0_fv6Byr8NlpiwOdVEtH4NXlofjKA1XNRLH5fVm2e-Qb9jEFflkPJLeDo945qctTqzWfrQQ0V8-C0bBFiz6OYmOBPPRIKUM3EbgTJoHTSqsvz4PlrJHCbsAgyev5rCoVLDkiSNj_PtGcAxsvtcRMuQR3BSOVhwo886HIpvMtkYIHcOJU3Vy5nJPmxaJ9SCYuoUfqNaMZQU"/>
+<div class="absolute top-4 right-4 bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 shadow-md">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+                            4.9
+                        </div>
+</div>
+<div class="p-6 space-y-4">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-headline font-extrabold text-xl">The Emerald Pine Ridge</h4>
+<p class="text-on-surface-variant font-medium text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                                    Olympic Peninsula, WA
+                                </p>
+</div>
+<span class="font-headline font-black text-secondary text-lg">$120<span class="text-xs font-normal text-on-surface-variant">/nt</span></span>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="bg-tertiary-container px-3 py-1 rounded-full flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">local_fire_department</span>
+<span class="font-label text-xs font-bold uppercase tracking-wider">Firepit</span>
+</div>
+<div class="bg-tertiary-container px-3 py-1 rounded-full flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">pets</span>
+<span class="font-label text-xs font-bold uppercase tracking-wider">Dogs OK</span>
+</div>
+<div class="bg-tertiary-container px-3 py-1 rounded-full flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">wifi</span>
+<span class="font-label text-xs font-bold uppercase tracking-wider">5G Fast</span>
+</div>
+</div>
+<button class="w-full vibe-gradient text-white font-headline font-extrabold py-4 rounded-full shadow-lg active:scale-95 transition-all">
+                            Book Now!
+                        </button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden chunky-shadow group">
+<div class="relative h-64 overflow-hidden">
+<img alt="Social Campfire Setting" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A group of young people laughing around a large circular campfire pit at dusk with colorful Adirondack chairs and string lights overhead" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATxiYmW1-EiCDQrd7IOwRPAVGXNlkVqAPdqzZljnXtAY39gcaVf30V8rDqGg-BViMl0S7WnFsAvjYDZInBeMQzjde61YgycbJyY2oZpYONMRldcngHgcG-22vtp3A1QNJnYdYfaRHMDpXQny5wf8T2pp5kahI-lRi8m-jh9ZhdQLe6jbLNF98wIjGbSN6oHEFkv4Mvhs3lj3c3SGQS619cjwF96oeHEZK7aZ8eHNjHU2plKnwRnfuYF3nNUWmXO9qYBr5UcviRlaQ"/>
+<div class="absolute top-4 right-4 bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 shadow-md">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+                            4.7
+                        </div>
+<div class="absolute bottom-4 left-4 bg-error text-white px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest animate-pulse">
+                            Almost Full!
+                        </div>
+</div>
+<div class="p-6 space-y-4">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-headline font-extrabold text-xl">Sunset Cove Social</h4>
+<p class="text-on-surface-variant font-medium text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                                    Lake Tahoe, CA
+                                </p>
+</div>
+<span class="font-headline font-black text-secondary text-lg">$85<span class="text-xs font-normal text-on-surface-variant">/nt</span></span>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="bg-tertiary-container px-3 py-1 rounded-full flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">kayaking</span>
+<span class="font-label text-xs font-bold uppercase tracking-wider">Waterfront</span>
+</div>
+<div class="bg-tertiary-container px-3 py-1 rounded-full flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">groups</span>
+<span class="font-label text-xs font-bold uppercase tracking-wider">Social</span>
+</div>
+</div>
+<button class="w-full bg-secondary-container text-on-secondary-container border-2 border-secondary font-headline font-extrabold py-4 rounded-full active:scale-95 transition-all">
+                            Notify Me!
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Vibe Meter (Custom Component) -->
+<section class="bg-surface-container rounded-lg p-8 text-center space-y-4 shadow-inner">
+<h3 class="font-headline font-extrabold text-xl">How's the <span class="text-secondary italic">vibe</span> check?</h3>
+<p class="text-sm text-on-surface-variant font-medium">Rate the social energy of your current spot.</p>
+<div class="relative pt-6 pb-2">
+<input class="w-full h-4 bg-white/50 rounded-full appearance-none cursor-pointer [&amp;::-webkit-slider-thumb]:appearance-none [&amp;::-webkit-slider-thumb]:w-8 [&amp;::-webkit-slider-thumb]:h-8 [&amp;::-webkit-slider-thumb]:bg-secondary [&amp;::-webkit-slider-thumb]:border-4 [&amp;::-webkit-slider-thumb]:border-white [&amp;::-webkit-slider-thumb]:rounded-full [&amp;::-webkit-slider-thumb]:shadow-lg" style="background: linear-gradient(to right, #9d4f00, #fcc025);" type="range"/>
+<div class="flex justify-between mt-4 text-[10px] font-black uppercase tracking-widest text-on-surface/50">
+<span>Chill Solo</span>
+<span>Festival Energy</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-4 left-0 w-full z-50 flex justify-around items-center px-8">
+<div class="bg-white/80 backdrop-blur-lg rounded-full w-full max-w-md mx-auto flex justify-around items-center p-2 shadow-[0_12px_32px_rgba(0,0,0,0.12)] border-none">
+<!-- Explore (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full p-4 scale-110 shadow-lg transition-all" href="#">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-headline font-bold text-[10px] tracking-wide mt-0.5">Explore</span>
+</a>
+<!-- Trips -->
+<a class="flex flex-col items-center justify-center text-stone-400 p-3 hover:text-secondary transition-colors transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined text-[24px]">terrain</span>
+<span class="font-headline font-bold text-[10px] tracking-wide mt-0.5">Trips</span>
+</a>
+<!-- Vibe -->
+<a class="flex flex-col items-center justify-center text-stone-400 p-3 hover:text-secondary transition-colors transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined text-[24px]">auto_awesome</span>
+<span class="font-headline font-bold text-[10px] tracking-wide mt-0.5">Vibe</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-stone-400 p-3 hover:text-secondary transition-colors transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-headline font-bold text-[10px] tracking-wide mt-0.5">Profile</span>
+</a>
+</div>
+</nav>
+<!-- FAB (Contextual) -->
+<button class="fixed bottom-24 right-6 w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center shadow-2xl z-40 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-3xl">add_location_alt</span>
+</button>
+</body></html>
