@@ -40,12 +40,14 @@ interface SearchFilterProps {
   handleEditMaxPrice: () => void;
   handleSaveMaxPrice: () => void;
   setIsSettingsOpen: (v: boolean) => void;
+  totalFound: number | null;
 }
 
 /**
  * 전국 지역, 거리, 가격, 시설 및 테마 필터를 통합 관리하는 대시보드
  */
 const SearchFilter = ({
+  cachedData,
   selDo, setSelDo,
   selFacs, setSelFacs,
   selTags, setSelTags,
@@ -57,7 +59,8 @@ const SearchFilter = ({
   tempMaxInput, setTempMaxInput,
   handleEditMaxDist, handleSaveMaxDist,
   handleEditMaxPrice, handleSaveMaxPrice,
-  setIsSettingsOpen
+  setIsSettingsOpen,
+  totalFound
 }: SearchFilterProps) => {
 
   const facOptions = ["전기", "무선인터넷", "장작판매", "온수", "트램펄린", "물놀이장", "놀이터", "산책로", "운동시설", "운동장"];
@@ -70,8 +73,16 @@ const SearchFilter = ({
 
   return (
     <div className="space-y-12 animate-in fade-in duration-700">
-      {/* 🔍 통합 검색창 */}
-      <section className="space-y-4">
+      {/* 🔍 통합 검색창 및 실시간 검색 결과 요약 */}
+      <section className="space-y-5">
+        <div className="flex justify-between items-end px-1">
+          <label className="flex items-center gap-2 font-headline font-black text-xs tracking-widest uppercase text-on-surface-variant opacity-40">
+            <Icon name="search" size="text-sm" /> 무엇을 찾으세요?
+          </label>
+          <span className="font-black text-primary text-[10px] uppercase tracking-tighter bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
+             총 {cachedData?.length.toLocaleString()}개 중 {totalFound?.toLocaleString()}개 발견
+          </span>
+        </div>
         <div className="relative group">
           <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-on-surface-variant/40 group-focus-within:text-primary transition-colors">
             <Icon name="search" size="text-xl" />

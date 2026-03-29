@@ -31,6 +31,7 @@ import {
   Send
 } from 'lucide-react';
 import Guide from './Guide';
+import VersionHistory from './VersionHistory';
 
 interface Campground {
   id: string;
@@ -93,10 +94,7 @@ export default function App() {
   const [githubPat, setGithubPat] = useState(() => (import.meta as any).env.VITE_GITHUB_PAT || '');
   const [isPublishing, setIsPublishing] = useState(false);
   
-  // 히스토리 관련 상태
-  const [history, setHistory] = useState<any[]>([]);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [historyTab, setHistoryTab] = useState<'local' | 'github'>('local');
   const [nextVersion, setNextVersion] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -232,44 +230,6 @@ export default function App() {
     }
   };
 
-  const fetchHistory = async () => {
-    try {
-      if (historyTab === 'local') {
-        const res = await axios.get(`${API_BASE}/db/history`);
-        setHistory(res.data);
-      } else {
-        const res = await axios.get(`${API_BASE}/github/history`, {
-          params: {
-            owner: 'love4rani',
-            repo: 'Camping-Sync',
-            path: 'public/camping-db.json',
-            token: githubPat
-          }
-        });
-        setHistory(res.data);
-      }
-    } catch (err) {
-      showToast('히스토리 로드 실패', 'error');
-    }
-  };
-
-  const handleRestore = async (fileName: string) => {
-    if (!window.confirm('선택한 시점으로 데이터를 복원하시겠습니까? 현재 변경사항은 사라집니다.')) return;
-    try {
-      const res = await axios.post(`${API_BASE}/db/restore/${fileName}`);
-      if (res.data.success) {
-        showToast('데이터 복원 완료', 'success');
-        setIsHistoryModalOpen(false);
-        fetchDB(); // 최신 파일 다시 불러오기
-      }
-    } catch (err) {
-      showToast('복원 실패', 'error');
-    }
-  };
-
-  useEffect(() => {
-    if (isHistoryModalOpen) fetchHistory();
-  }, [isHistoryModalOpen, historyTab]);
 
   // --- CSV / Utils ---
   const exportCSV = () => {
@@ -513,65 +473,16 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isHistoryModalOpen && (
-          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsHistoryModalOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }} className="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-               <div className="px-10 py-8 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                     <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center"><Database className="w-6 h-6 text-primary" /></div>
-                     <div>
-                        <h2 className="font-black text-xl text-slate-800">History Center</h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Version Control & Rollback</p>
-                     </div>
-                  </div>
-                  <button onClick={() => setIsHistoryModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-400 transition-all"><X className="w-6 h-6" /></button>
-               </div>
-               
-               <div className="flex bg-slate-50/50 p-1 mx-10 mt-6 rounded-2xl border border-slate-200/50">
-                  <button onClick={() => setHistoryTab('local')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${historyTab === 'local' ? 'bg-white shadow-sm text-primary' : 'text-slate-400 hover:text-slate-600'}`}>LOCAL BACKUPS</button>
-                  <button onClick={() => setHistoryTab('github')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${historyTab === 'github' ? 'bg-white shadow-sm text-primary' : 'text-slate-400 hover:text-slate-600'}`}>ONLINE (GITHUB)</button>
-               </div>
-
-               <div className="flex-1 overflow-y-auto p-10 no-scrollbar space-y-4">
-                  {history.length === 0 ? (
-                    <div className="h-64 flex flex-col items-center justify-center text-slate-300 gap-4">
-                       <Info className="w-12 h-12 opacity-20" />
-                       <p className="text-sm font-bold">표시할 히스토리가 없습니다.</p>
-                    </div>
-                  ) : (
-                    history.map((item, idx) => (
-                      <div key={idx} className="group p-5 bg-white border border-slate-100 rounded-2xl hover:border-primary/30 hover:shadow-md transition-all flex items-center justify-between">
-                         <div className="flex items-center gap-5">
-                            <div className="w-1 h-8 rounded-full bg-slate-100 group-hover:bg-primary transition-all" />
-                            <div>
-                               <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-[10px] font-black text-primary px-2 py-0.5 bg-primary/5 rounded border border-primary/10">{item.version || item.sha?.slice(0, 7)}</span>
-                                  <span className="text-[10px] font-bold text-slate-400">{new Date(item.timestamp || item.date).toLocaleString()}</span>
-                               </div>
-                               <p className="text-sm font-bold text-slate-700 line-clamp-1">{item.message}</p>
-                               {item.author && <p className="text-[10px] font-medium text-slate-400 mt-1">By {item.author}</p>}
-                            </div>
-                         </div>
-                         {historyTab === 'local' && (
-                           <button onClick={() => handleRestore(item.fileName)} className="px-4 py-2 rounded-xl bg-slate-50 text-[10px] font-black text-slate-400 hover:bg-primary hover:text-white transition-all">RESTORE</button>
-                         )}
-                         {historyTab === 'github' && (
-                           <a href={item.url} target="_blank" rel="noreferrer" className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:text-primary transition-all"><Github className="w-4 h-4" /></a>
-                         )}
-                      </div>
-                    ))
-                  )}
-               </div>
-               
-               <div className="p-8 bg-slate-50 border-t border-slate-100 text-center">
-                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Total {history.length} snapshots available</p>
-               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* --- 버전 히스토리 모달 (모듈화됨) --- */}
+      <VersionHistory 
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        apiBase={API_BASE}
+        githubPat={githubPat}
+        currentVersion={db?.version || ''}
+        onRestoreSuccess={fetchDB}
+        showToast={showToast}
+      />
 
       <AnimatePresence>
         {isDiffModalOpen && diffResults && (

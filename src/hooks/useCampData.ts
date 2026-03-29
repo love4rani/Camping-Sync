@@ -87,17 +87,20 @@ export const useCampData = ({
       const meetsType = selTypes.length === 0 || selTypes.some(t => i.type.includes(t));
       const meetsEnv = selEnvs.length === 0 || selEnvs.some(e => i.env.includes(e));
       const meetsFac = selFacs.length === 0 || selFacs.every(f => (i.fac || '').includes(f));
-      const meetsTag = selTags.length === 0 || selTags.some(t => (i.fac || '').includes(t.replace('#', '')));
+      
+      // 태그(#)는 시설(fac), 환경(env), 캠핑유형(type)에서 모두 교차 검색하여 정확도를 높입니다.
+      const searchSpace = `${i.fac || ''} ${i.env || ''} ${i.type || ''}`.toLowerCase();
+      const meetsTag = selTags.length === 0 || selTags.some(t => searchSpace.includes(t.replace('#', '').toLowerCase()));
 
       return meetsPrice && meetsDo && meetsSigungu && meetsType && meetsEnv &&
         meetsFac && meetsTag;
     });
 
-    // 3. 거리/시간순 정렬 및 필터 (분석 데이터가 있을 경우만)
-    const hasAnalysis = items.some(i => i.timeHome !== undefined);
+    // 3. 거리/시간순 정렬 및 필터링 (분석 데이터가 있을 경우만 실생활 기준으로 작동)
+    const hasAnalysis = items.some(i => i.timeHome !== undefined && i.timeHome !== null);
     if (hasAnalysis) {
       filtered = filtered.filter(i => (i.timeHome || 0) <= distLimit);
-      filtered.sort((a, b) => (a.timeHome || 999) - (b.timeHome || 999));
+      filtered.sort((a, b) => (a.timeHome || 9991) - (b.timeHome || 9991));
     }
 
     setTotalFound(filtered.length);
