@@ -20,7 +20,7 @@ interface SearchFilterProps {
   selTypes: string[];
   setSelTypes: (v: string[]) => void;
   selFacs: string[];
-  setSelFacs: (v: string[]) => void;
+  setSelFacs: (v: string[] | ((prev: string[]) => string[])) => void;
   selTags: string[];
   setSelTags: (v: string[]) => void;
   distLimit: number;
@@ -49,6 +49,7 @@ interface SearchFilterProps {
 const SearchFilter = ({
   cachedData,
   selDo, setSelDo,
+  selSigungu, setSelSigungu,
   selFacs, setSelFacs,
   selTags, setSelTags,
   distLimit, setDistLimit, distConfig,
@@ -100,17 +101,34 @@ const SearchFilter = ({
       {/* 지역 필터 (도 단위) */}
       <section className="space-y-6">
         <label className="flex items-center gap-2 font-headline font-black text-xs tracking-widest uppercase text-on-surface-variant opacity-40">
-          <Icon name="location_on" size="text-sm" /> 지역 선택
+          <Icon name="location_on" size="text-sm" /> 지역 선택 (도)
         </label>
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 mask-linear-right">
           {["전체", "강원", "경기", "경남", "경북", "광주", "대구", "대전", "부산", "서울", "세종", "울산", "인천", "전남", "전북", "제주", "충남", "충북"].map(d => (
-            <button key={d} onClick={() => { setSelDo(d); }} 
+            <button key={d} onClick={() => { setSelDo(d); setSelSigungu('전체'); }} 
               className={`flex-shrink-0 px-6 py-3.5 rounded-2xl font-black transition-all transform active:scale-90 ${selDo === d ? 'vibe-gradient text-white shadow-lg shadow-primary/20 scale-105' : 'bg-surface-container-highest text-on-surface-variant hover:bg-primary/5'}`}>
               {d}
             </button>
           ))}
         </div>
       </section>
+
+      {/* 지역 필터 (시군구 단위 - 도가 선택되었을 때만 표시) */}
+      {selDo !== '전체' && (
+        <section className="space-y-6 animate-in slide-in-from-top-4 duration-500">
+          <label className="flex items-center gap-2 font-headline font-black text-xs tracking-widest uppercase text-on-surface-variant opacity-40">
+            <Icon name="explore" size="text-sm" /> 상세 지역 (시군구)
+          </label>
+          <div className="flex flex-wrap gap-2.5">
+            {["전체", ...Array.from(new Set((cachedData || [])?.filter(i => i.do.startsWith(selDo)).map(i => i.sigungu)))].sort().map(s => (
+              <button key={s} onClick={() => setSelSigungu(s)}
+                className={`px-5 py-3 rounded-xl font-black text-[11px] transition-all active:scale-95 ${selSigungu === s ? 'bg-secondary text-white shadow-md' : 'bg-surface-container text-on-surface-variant/60 hover:bg-neutral-200'}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 거리/시간 슬라이더 세션 */}
       <section className="space-y-6 bg-white/40 backdrop-blur-3xl p-8 rounded-[2.5rem] border border-white/50 shadow-sm relative overflow-hidden group">

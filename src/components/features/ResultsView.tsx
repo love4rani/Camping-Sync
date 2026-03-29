@@ -37,13 +37,18 @@ const ResultsView = ({
       <div className="flex justify-between items-center px-2">
         <button 
           onClick={() => setActiveTab('search')} 
-          className="flex items-center gap-1 text-on-surface-variant font-bold active:opacity-50 transition-opacity"
+          className="flex items-center gap-1.5 text-on-surface-variant font-black active:opacity-50 transition-all bg-white/40 px-4 py-2 rounded-2xl border border-white/50 shadow-sm"
         >
-          <Icon name="arrow_back" /> 필터 수정
+          <Icon name="tune" size="text-sm" /> 필터 수정하기
         </button>
-        <span className="font-black text-primary uppercase tracking-widest text-[10px]">
-          총 {totalFound?.toLocaleString()}개 발견
-        </span>
+        <div className="flex flex-col items-end">
+          <span className="font-headline font-black text-primary text-xs uppercase tracking-widest">
+            {totalFound?.toLocaleString()}건 발견
+          </span>
+          <span className="text-[9px] font-bold text-on-surface-variant/30 uppercase tracking-tighter">
+            현재 조건 필터링 결과
+          </span>
+        </div>
       </div>
       
       {/* 캠핑장 카드 리스트 (그리드) */}
