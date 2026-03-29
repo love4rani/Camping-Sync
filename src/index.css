@@ -58,9 +58,17 @@
   --font-label: "Be Vietnam Pro", sans-serif;
 }
 
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 @layer utilities {
   .vibe-gradient {
     background: linear-gradient(135deg, #007439 0%, #6dfe9c 100%);
+  }
+  .vibe-gradient-alt {
+    background: linear-gradient(135deg, #007439 0%, #004a22 100%);
   }
   .soft-glow {
     box-shadow: 0 8px 24px rgba(157, 79, 0, 0.08);
@@ -74,8 +82,19 @@
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
+html, body {
+  overflow-x: hidden;
+  overflow-y: scroll !important;
+}
+
 body {
-  min-height: max(884px, 100dvh);
+  min-height: 100dvh;
+  padding-bottom: var(--safe-bottom);
+  background-color: var(--color-surface-container-low);
 }
 
 .settings-input {

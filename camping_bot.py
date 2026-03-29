@@ -2,6 +2,7 @@ import requests
 import math
 from bs4 import BeautifulSoup
 import time
+import cloudscraper
 
 import os
 import json
@@ -127,26 +128,36 @@ def get_filtered_campgrounds():
 # 모듈 C: 실시간 예약 스크래핑 (웹 크롤링)
 # ==========================================
 def check_reservation_status(res_url):
-    """예약 사이트에서 잔여석 여부를 체크하는 스크래퍼"""
-    if not res_url or res_url.strip() == "":
+    """
+    캠핑장 예약 페이지를 분석하여 예약 가능 여부를 판단합니다.
+    캠핏(Camfit)의 경우 Cloudflare 우회를 위해 cloudscraper를 사용합니다.
+    """
+    if not res_url or not res_url.startswith('http'):
         return False
-    
+
     try:
-        # 차단 방지를 위한 User-Agent 헤더 추가
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        response = requests.get(res_url, headers=headers, timeout=(5, 10))
+        # 캠핏 연동 강화
+        if 'camfit.co.kr' in res_url:
+            scraper = cloudscraper.create_scraper()
+            response = scraper.get(res_url, timeout=20)
+        else:
+            # 차단 방지를 위한 User-Agent 헤더 추가
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(res_url, headers=headers, timeout=10)
+            
+        if response.status_code != 200:
+            print(f"[{res_url}] 접속 실패 (상태 코드: {response.status_code})")
+            return False
         
         # 인코딩 문제 임시 해결
         response.encoding = response.apparent_encoding
         soup = BeautifulSoup(response.text, 'html.parser')
-        
         page_text = soup.get_text(strip=True)
         
-        # 1. '예약 불가' 및 '만석' 키워드 필터링 (다수 사이트 공통 발생어)
-        sold_out_keywords = ['예약마감', '예약불가', '종료', '만석', 'Sold out', '남은자리없음', '예약완료']
-        
+        # 1. 예약 불가 키워드
+        sold_out_keywords = ['예약마감', '예약불가', '종료', '만석', 'Sold out', '남은자리없음', '예약완료', '예약 가능일 없음']
         for keyword in sold_out_keywords:
             if keyword in page_text:
                 print(f"[알림] 예약 불가 감지: {keyword} ({res_url})")

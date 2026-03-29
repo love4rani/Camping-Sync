@@ -1,0 +1,1252 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ * Camping-Sync | Vibrant Dashboard
+ * Design: Stitch with Google (camping_sync_vibrant_dashboard)
+ * Logic: Original GoCamping API + OSRM distance engine
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Range, getTrackBackground, Direction } from 'react-range';
+import { motion, AnimatePresence } from 'motion/react';
+
+// --- Types ---
+interface Campground {
+  id: string;
+  nm: string;
+  addr: string;
+  lat: number;
+  lng: number;
+  do: string;
+  sigungu: string;
+  type: string;
+  env: string;
+  fac: string;
+  img: string;
+  resve: string;
+  price: number | null;
+  stone: boolean;
+  parking: boolean;
+  camfit: boolean;
+  timeHome?: number;
+  timeWork?: number;
+  roadDistHome?: number;
+  roadDistWork?: number;
+}
+
+const ICON = (name: string, fill = false, size = 'text-2xl') => (
+  <span
+    className={`material-symbols-outlined ${size} select-none`}
+    style={fill ? { fontVariationSettings: "'FILL' 1" } : {}}
+  >
+    {name}
+  </span>
+);
+
+// ── CampCard (Moved outside App to prevent re-mounting flicker) ──
+const CampCard = React.memo(({ camp, idx, targetCamps, toggleTargetCamp }: { 
+  camp: Campground; 
+  idx: number; 
+  targetCamps: any[]; 
+  toggleTargetCamp: (camp: Campground, url: string) => void;
+}) => {
+  const naverUrl = `https://map.naver.com/v5/search/${encodeURIComponent(camp.nm)}`;
+  let resveUrl = camp.resve || '';
+  const m = resveUrl.match(/(https?:\/\/[^\s,]+)/g);
+  if (m?.length) resveUrl = m[0];
+  
+  const isRealResve = resveUrl && resveUrl.startsWith('http') && 
+                     !resveUrl.includes('naver.com') && 
+                     !resveUrl.includes('kakao.com');
+  
+  const getBookingLabel = () => {
+    if (!resveUrl) return '정보없음';
+    const lowUrl = resveUrl.toLowerCase();
+    const lowFac = (camp.fac || '').toLowerCase();
+    if (lowUrl.includes('campfit.co.kr') || lowFac.includes('캠핏')) return '캠핏';
+    if (lowUrl.includes('naver.com')) return '네이버';
+    if (lowUrl.includes('interpark.com')) return '인터파크';
+    if (lowUrl.includes('thankqcamping.com') || lowFac.includes('땡큐')) return '땡큐캠핑';
+    if (lowUrl.includes('camlink.co.kr')) return '캠링크';
+    if (isRealResve) return '전용사이트';
+    return '문의필요';
+  };
+
+  const isTargeted = targetCamps.some(t => t.name === camp.nm);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="bg-surface-container-lowest rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-outline-variant/10 group"
+    >
+      <div className="relative h-44 overflow-hidden">
+        <img
+          src={camp.img || `https://picsum.photos/seed/${camp.id}/800/600`}
+          alt={camp.nm}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[9px] font-black shadow-sm text-primary uppercase tracking-widest">
+          {camp.do} {camp.sigungu}
+        </div>
+      </div>
+      <div className="p-4 space-y-3">
+        <div className="flex justify-between items-start gap-4">
+          <h3 className="font-headline font-black text-lg text-on-surface leading-tight tracking-tight flex-1 line-clamp-1">
+            {camp.nm}
+          </h3>
+        </div>
+        
+        <p className="text-on-surface-variant text-xs font-bold flex items-center gap-1.5 opacity-70 line-clamp-1">
+          {ICON('location_on', true, 'text-base text-primary/40')} {camp.addr || '주소 정보 없음'}
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-surface-container rounded-xl p-3 space-y-0.5 border border-outline-variant/10">
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant opacity-40 flex items-center gap-1.5">
+              {ICON('home', true, 'text-[10px]')} 집에서
+            </p>
+            <p className="font-headline font-black text-sm text-primary">
+              {camp.timeHome && camp.timeHome > 0 ? `${camp.timeHome}분` : '분석필요'}
+              {camp.roadDistHome ? <span className="text-[8px] opacity-40 ml-1 font-bold uppercase tracking-tighter">{camp.roadDistHome}km</span> : null}
+            </p>
+          </div>
+          <div className="bg-surface-container rounded-xl p-3 space-y-0.5 border border-outline-variant/10">
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant opacity-40 flex items-center gap-1.5">
+              {ICON('work', true, 'text-[10px]')} 회사에서
+            </p>
+            <p className="font-headline font-black text-sm text-secondary">
+              {camp.timeWork && camp.timeWork > 0 ? `${camp.timeWork}분` : '분석필요'}
+              {camp.roadDistWork ? <span className="text-[8px] opacity-40 ml-1 font-bold uppercase tracking-tighter">{camp.roadDistWork}km</span> : null}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {camp.price && (
+            <div className="bg-secondary/10 border border-secondary/20 px-4 py-1.5 rounded-full flex items-center gap-1.5">
+              {ICON('payments', true, 'text-[12px] text-secondary')}
+              <span className="font-label text-[11px] font-black text-secondary uppercase tracking-wide">
+                1박 기준 약 {camp.price.toLocaleString()}원~
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2.5 pt-2 border-t border-outline-variant/30">
+          <a href={naverUrl} target="_blank" rel="noreferrer"
+            className="flex-[2.5] py-3 rounded-xl text-xs font-black tracking-widest flex items-center justify-center gap-2 vibe-gradient text-white shadow-lg active:scale-95 transition-all">
+            {ICON('map', true, 'text-base')} 지도보기
+          </a>
+
+          {isRealResve ? (
+            <a href={resveUrl} target="_blank" rel="noreferrer"
+              className="flex-[1.5] py-3 rounded-xl text-[10px] font-black tracking-tighter flex items-center justify-center gap-1.5 bg-surface-container text-primary hover:bg-primary/5 transition-colors border-2 border-primary/5">
+              {ICON('event_available', true, 'text-[12px]')} {getBookingLabel()}
+            </a>
+          ) : (
+            <div className="flex-[1.5] py-3 rounded-xl text-[10px] font-black tracking-tighter flex items-center justify-center gap-1.5 bg-surface-container/50 text-on-surface-variant/20 border border-outline-variant/10 cursor-not-allowed">
+              {ICON('event_busy', false, 'text-[12px]')} {getBookingLabel()}
+            </div>
+          )}
+
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); toggleTargetCamp(camp, resveUrl || naverUrl); }}
+            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-90 shadow-sm ${isTargeted ? 'bg-secondary text-white shadow-secondary/20' : 'bg-surface-container text-on-surface-variant/20 border border-outline-variant/20'}`}>
+            {ICON(isTargeted ? 'favorite' : 'favorite_border', isTargeted, 'text-xl')}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
+export default function App() {
+  // --- Core State ---
+  const [dbVersion, setDbVersion] = useState('2026.03.1');
+  const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
+  const [priceConfig, setPriceConfig] = useState({ min: 0, max: 100000 });
+  const [distConfig, setDistConfig] = useState({ min: 0, max: 120 });
+  const [priceLimit, setPriceLimit] = useState(50000);
+  const [distLimit, setDistLimit] = useState(120);
+  const [homeCoords, setHomeCoords] = useState({ lat: 37.459479, lng: 127.025171 });
+  const [workCoords, setWorkCoords] = useState({ lat: 37.4780439, lng: 126.8815648 });
+  const [candidateLimit, setCandidateLimit] = useState(4000);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cachedData, setCachedData] = useState<Campground[] | null>(null);
+  const [targetCamps, setTargetCamps] = useState<{ name: string; url: string }[]>([]);
+  
+  // --- New Filters ---
+  const [selDo, setSelDo] = useState<string>('전체');
+  const [selSigungu, setSelSigungu] = useState<string>('전체');
+  const [selTypes, setSelTypes] = useState<string[]>([]);
+  const [selEnvs, setSelEnvs] = useState<string[]>([]);
+  const [selFacs, setSelFacs] = useState<string[]>([]);
+  const [selFloors, setSelFloors] = useState<string[]>([]);
+  const [selThemes, setSelThemes] = useState<string[]>([]);
+  const [selOthers, setSelOthers] = useState<string[]>([]);
+  const [selTags, setSelTags] = useState<string[]>([]);
+
+  // --- Debug Mode ---
+  const [isDebugMode, setIsDebugMode] = useState(false);
+  const [deviceRatio, setDeviceRatio] = useState<'iphone' | 'pixel' | '916'>('916');
+
+  // --- UI State ---
+  const [campgrounds, setCampgrounds] = useState<Campground[]>([]);
+  const [totalFound, setTotalFound] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [activeTab, setActiveTab] = useState<'search' | 'results' | 'favorites'>('search');
+  
+  // --- System Task State ---
+  const [isSystemTaskActive, setIsSystemTaskActive] = useState(false);
+  const [systemTaskProgress, setSystemTaskProgress] = useState(0);
+  const [systemTaskStatus, setSystemTaskStatus] = useState('');
+  const [isSystemTaskComplete, setIsSystemTaskComplete] = useState(false);
+
+  // --- Settings edit sub-states ---
+  const [editSec, setEditSec] = useState<string | null>(null);
+  const [tmpHomeUrl, setTmpHomeUrl] = useState('');
+  const [tmpWorkUrl, setTmpWorkUrl] = useState('');
+  const [tmpCandidateLimit, setTmpCandidateLimit] = useState(candidateLimit);
+  const [activeSubModal, setActiveSubModal] = useState<string | null>(null);
+  const [isEditingPriceMax, setIsEditingPriceMax] = useState(false);
+  const [isEditingDistMax, setIsEditingDistMax] = useState(false);
+  const [tmpHomeCoords, setTmpHomeCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [tmpWorkCoords, setTmpWorkCoords] = useState<{lat: number, lng: number} | null>(null);
+
+  const extractLatLng = (url: string) => {
+    if (!url) return null;
+    const m1 = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m1) return { lat: parseFloat(m1[1]), lng: parseFloat(m1[2]) };
+    const m2 = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+    if (m2) return { lat: parseFloat(m2[1]), lng: parseFloat(m2[2]) };
+    const m3 = url.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m3) return { lat: parseFloat(m3[1]), lng: parseFloat(m3[2]) };
+    return null;
+  };
+
+  // --- Persistence ---
+  useEffect(() => {
+    const load = (key: string) => localStorage.getItem(key);
+    if (load('camping_dbVersion')) setDbVersion(load('camping_dbVersion')!);
+    if (load('camping_homeCoords')) setHomeCoords(JSON.parse(load('camping_homeCoords')!));
+    if (load('camping_workCoords')) setWorkCoords(JSON.parse(load('camping_workCoords')!));
+    if (load('camping_priceLimit')) setPriceLimit(Number(load('camping_priceLimit')));
+    if (load('camping_distLimit')) setDistLimit(Number(load('camping_distLimit')));
+    if (load('camping_candidateLimit')) setCandidateLimit(Number(load('camping_candidateLimit')));
+    if (load('camping_priceConfig')) setPriceConfig(JSON.parse(load('camping_priceConfig')!));
+    if (load('camping_distConfig')) setDistConfig(JSON.parse(load('camping_distConfig')!));
+    if (load('camping_targetCamps')) { try { setTargetCamps(JSON.parse(load('camping_targetCamps')!)); } catch {} }
+    if (load('camping_isDebugMode')) setIsDebugMode(load('camping_isDebugMode') === 'true');
+    if (load('camping_deviceRatio')) setDeviceRatio(load('camping_deviceRatio') as any);
+    
+    const cached = load('camping_cached_items_v2');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setCachedData(parsed);
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('camping_dbVersion', dbVersion);
+    localStorage.setItem('camping_homeCoords', JSON.stringify(homeCoords));
+    localStorage.setItem('camping_workCoords', JSON.stringify(workCoords));
+    localStorage.setItem('camping_priceLimit', String(priceLimit));
+    localStorage.setItem('camping_distLimit', String(distLimit));
+    localStorage.setItem('camping_candidateLimit', String(candidateLimit));
+    localStorage.setItem('camping_priceConfig', JSON.stringify(priceConfig));
+    localStorage.setItem('camping_distConfig', JSON.stringify(distConfig));
+    localStorage.setItem('camping_targetCamps', JSON.stringify(targetCamps));
+    localStorage.setItem('camping_isDebugMode', String(isDebugMode));
+    localStorage.setItem('camping_deviceRatio', deviceRatio);
+  }, [dbVersion, homeCoords, workCoords, priceLimit, distLimit, candidateLimit, targetCamps, priceConfig, distConfig, cachedData, isDebugMode, deviceRatio]);
+
+  useEffect(() => {
+    if (cachedData) processItems(cachedData);
+  }, [priceLimit, distLimit, searchQuery, candidateLimit, selDo, selSigungu, selTypes, selEnvs, selFacs, selFloors, selThemes, selOthers, selTags]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // --- Scroll to top ---
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const toggleTargetCamp = (camp: Campground, clickUrl: string) => {
+    setTargetCamps(prev => {
+      const exists = prev.find(t => t.name === camp.nm);
+      return exists ? prev.filter(t => t.name !== camp.nm) : [...prev, { name: camp.nm, url: clickUrl }];
+    });
+  };
+
+  // --- Helpers ---
+  const calcDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  // --- API Fetch ---
+  // --- Data Processing ---
+  const processItems = (items: Campground[]) => {
+    setLoading(true);
+    setError(null);
+    
+    // 1. Text Search (Local)
+    let filtered = items;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = items.filter(i => 
+        i.nm.toLowerCase().includes(q) || 
+        i.addr.toLowerCase().includes(q) ||
+        i.do.toLowerCase().includes(q) ||
+        i.sigungu.toLowerCase().includes(q)
+      );
+    }
+
+    // 2. Filters (All Options)
+    filtered = filtered.filter(i => {
+      const meetsPrice = i.price === null || i.price <= priceLimit;
+      
+      const meetsDo = selDo === '전체' || i.do === selDo;
+      const meetsSigungu = selSigungu === '전체' || i.sigungu === selSigungu;
+      
+      const meetsType = selTypes.length === 0 || selTypes.some(t => i.type.includes(t));
+      const meetsEnv = selEnvs.length === 0 || selEnvs.some(e => i.env.includes(e));
+      const meetsFac = selFacs.length === 0 || selFacs.every(f => i.fac.includes(f));
+      const meetsFloor = selFloors.length === 0 || selFloors.some(f => i.fac.includes(f));
+      const meetsTheme = selThemes.length === 0 || selThemes.some(t => i.fac.includes(t));
+      const meetsOther = selOthers.length === 0 || selOthers.some(o => i.fac.includes(o));
+      const meetsTag = selTags.length === 0 || selTags.some(t => i.fac.includes(t.replace('#', '')));
+
+      return meetsPrice && meetsDo && meetsSigungu && meetsType && meetsEnv && 
+             meetsFac && meetsFloor && meetsTheme && meetsOther && meetsTag;
+    });
+
+    // 3. Distance/Time (Sort & Limit)
+    // If analyzed, sort by timeHome. If not, just show.
+    filtered.sort((a, b) => (a.timeHome || 999) - (b.timeHome || 999));
+    
+    setTotalFound(filtered.length);
+    setCampgrounds(filtered.slice(0, candidateLimit));
+    setLoading(false);
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    setLoadingStatus('DB 파일 로딩 중...');
+    try {
+      const res = await fetch('/camping-db.json');
+      if (!res.ok) throw new Error('DB 파일을 불러오지 못했습니다.');
+      const data = await res.json();
+      setDbVersion(data.version);
+      setCachedData(data.items);
+      processItems(data.items);
+    } catch (err: any) {
+      setError(`DB 로드 실패: ${err.message}`);
+      setLoading(false);
+    }
+  };
+
+  const runFullAnalysis = async () => {
+    if (!cachedData) return;
+    setIsSystemTaskActive(true);
+    setIsSystemTaskComplete(false);
+    setSystemTaskProgress(0);
+    setSystemTaskStatus('분석 준비 중...');
+
+    const items = [...cachedData];
+    const batchSize = 100;
+
+    const getOSRMData = async (src: { lat: number, lng: number }, targets: Campground[], offset: number, scale: number) => {
+      for (let i = 0; i < targets.length; i += batchSize) {
+        const batch = targets.slice(i, i + batchSize);
+        const batchIndices = Array.from({ length: batch.length }, (_, j) => i + j);
+        
+        setSystemTaskStatus(`경로 분석 중... (${i + batch.length}/${targets.length})`);
+        setSystemTaskProgress(offset + Math.round((i / targets.length) * scale));
+
+        try {
+          const coords = `${src.lng},${src.lat};` + batch.map(t => `${t.lng},${t.lat}`).join(';');
+          const destIdx = batch.map((_, j) => j + 1).join(';');
+          const res = await fetch(`https://router.project-osrm.org/table/v1/driving/${coords}?sources=0&destinations=${destIdx}&annotations=duration,distance`);
+          const d = await res.json();
+          if (d.code === 'Ok' && d.durations) {
+            batchIndices.forEach((idx, j) => {
+              items[idx] = {
+                ...items[idx],
+                [src === homeCoords ? 'timeHome' : 'timeWork']: Math.round((d.durations[0][j] || 0) / 60),
+                [src === homeCoords ? 'roadDistHome' : 'roadDistWork']: parseFloat(((d.distances[0][j] || 0) / 1000).toFixed(1))
+              };
+            });
+          }
+        } catch (e) {
+          console.error('OSRM Batch failed', e);
+        }
+        await new Promise(r => setTimeout(r, 600)); // Rate limit safety
+      }
+    };
+
+    try {
+      await getOSRMData(homeCoords, items, 0, 45);
+      await getOSRMData(workCoords, items, 45, 45);
+      setCachedData(items);
+      setSystemTaskProgress(100);
+      setSystemTaskStatus('전국 주행시간 전수 분석 완료!');
+      setIsSystemTaskComplete(true);
+      processItems(items);
+    } catch (err: any) {
+      setSystemTaskStatus(`분석 실패: ${err.message}`);
+      setIsSystemTaskComplete(true);
+    }
+  };
+
+  const exportDB = () => {
+    if (!cachedData) return;
+    const blob = new Blob([JSON.stringify({ version: dbVersion, items: cachedData }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `camping-sync-db-${dbVersion}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importDB = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (re) => {
+      try {
+        const data = JSON.parse(re.target?.result as string);
+        if (data.items) {
+          setCachedData(data.items);
+          setDbVersion(data.version || 'unknown');
+          processItems(data.items);
+          alert('DB를 성공적으로 가져왔습니다!');
+        }
+      } catch {
+        alert('잘못된 파일 형식입니다.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleResetFilters = () => {
+    setSelDo('전체');
+    setSelSigungu('전체');
+    setSelEnvs([]);
+    setSelTypes([]);
+    setSelFacs([]);
+    setSelFloors([]);
+    setSelThemes([]);
+    setSelOthers([]);
+    setSelTags([]);
+    setPriceLimit(priceConfig.max);
+    setDistLimit(distConfig.max);
+  };
+  // ==========================================
+  // --- Sub Components ---
+
+  const DeviceSimulator = ({ children }: { children: React.ReactNode }) => {
+    if (!isDebugMode) return <>{children}</>;
+    
+    const ratios = {
+      iphone: { w: 390, h: 844, name: 'iPhone 14' },
+      pixel: { w: 412, h: 915, name: 'Pixel 7' },
+      916: { w: 450, h: 800, name: '표준 (9:16)' }
+    };
+    const current = ratios[deviceRatio];
+
+    return (
+      <div className="fixed inset-0 bg-neutral-900 flex items-center justify-center p-8 overflow-hidden z-[9999]">
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/10 backdrop-blur-xl px-6 py-3 rounded-full border border-white/10 shadow-2xl">
+          {(Object.keys(ratios) as Array<keyof typeof ratios>).map(r => (
+            <button key={r} onClick={() => setDeviceRatio(r)}
+              className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full transition-all ${deviceRatio === r ? 'bg-primary text-white' : 'text-white/40 hover:text-white/60'}`}>
+              {ratios[r].name}
+            </button>
+          ))}
+          <div className="w-px h-4 bg-white/10 mx-2" />
+          <button onClick={() => setIsDebugMode(false)}
+            className="text-[10px] font-black text-error uppercase tracking-widest px-4 py-1.5 rounded-full hover:bg-error/10 transition-all">
+            시뮬레이터 종료
+          </button>
+        </div>
+        
+        <div className="relative shadow-[0_0_100px_rgba(0,0,0,0.5)] border-[12px] border-neutral-800 rounded-[3.5rem] overflow-hidden bg-white"
+          style={{ width: current.w, height: current.h }}>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-neutral-800 rounded-b-2xl z-50 flex items-center justify-center pt-1">
+            <div className="w-12 h-1 bg-white/10 rounded-full" />
+          </div>
+          <div className="w-full h-full overflow-y-auto no-scrollbar overflow-x-hidden">
+            {children}
+          </div>
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-28 h-1 bg-neutral-300 rounded-full z-50" />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <DeviceSimulator>
+      <div className="bg-surface-container-low font-body text-on-surface min-h-screen pb-32 text-[13px]">
+
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-outline-variant/10 px-6" style={{ paddingTop: 'calc(var(--safe-top, 0px) + 0.75rem)', paddingBottom: '0.75rem' }}>
+        <div className="max-w-lg mx-auto lg:max-w-2xl">
+          <div className="flex justify-between items-center">
+            <h1 className="font-headline font-black text-xl tracking-tight text-primary italic leading-none shrink-0">캠핑가자! 싫다고?</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-container-highest/50 hover:bg-surface-container transition-colors"
+                aria-label="Settings"
+              >
+                {ICON('settings', false, 'text-lg text-on-surface-variant')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="px-4 pt-4 pb-24 space-y-6 max-w-lg mx-auto lg:max-w-2xl relative overflow-x-hidden">
+        
+        {/* VIEW: SEARCH FILTERS */}
+        {activeTab === 'search' && (
+          <div className="animate-in fade-in duration-300 relative">
+            {/* ── Scrollable Content ── */}
+            <div className="space-y-4 pb-32">
+            {/* ── Filter Card ── */}
+            <section className="bg-surface-container-highest p-4 rounded-xl space-y-4">
+              <div className="space-y-4">
+                {/* Location (Do/Sigungu) */}
+                <div className="space-y-3">
+                  <label className="block w-full font-label font-black text-[10px] tracking-widest uppercase text-on-surface-variant opacity-40">지역별</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['전체', '서울', '인천', '경기', '강원', '충북', '충남', '대전', '전북', '전남', '광주', '경북', '경남', '대구', '울산', '부산', '제주', '세종'].map(d => (
+                      <button key={d} onClick={() => { setSelDo(d); setSelSigungu('전체'); }}
+                        className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all ${selDo === d ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-on-surface-variant border-outline-variant'}`}>
+                        {d === '전체' ? '전국' : d}
+                      </button>
+                    ))}
+                  </div>
+                  {selDo !== '전체' && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button onClick={() => setSelSigungu('전체')}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black border transition-all ${selSigungu === '전체' ? 'bg-secondary text-white border-secondary' : 'bg-white text-on-surface-variant/40 border-outline-variant/30'}`}>
+                        전체
+                      </button>
+                      {cachedData && Array.from(new Set(cachedData.filter(i => i.do.startsWith(selDo)).map(i => i.sigungu))).sort().map(s => (
+                        <button key={s} onClick={() => setSelSigungu(s)}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-black border transition-all ${selSigungu === s ? 'bg-secondary text-white border-secondary' : 'bg-white text-on-surface-variant/40 border-outline-variant/30'}`}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="h-px bg-outline-variant/30 my-2" />
+                
+                {/* Env (입지구분) */}
+                <div className="space-y-2">
+                  <label className="block font-label font-black text-[10px] tracking-widest uppercase text-on-surface-variant opacity-40">입지구분</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['해변', '섬', '산', '숲', '계곡', '강', '호수', '도심'].map(e => (
+                      <button key={e} onClick={() => setSelEnvs(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e])}
+                        className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all ${selEnvs.includes(e) ? 'bg-secondary text-white border-secondary shadow-md' : 'bg-white text-on-surface-variant border-outline-variant'}`}>
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Type (캠핑유형) */}
+                <div className="space-y-2">
+                  <label className="block font-label font-black text-[10px] tracking-widest uppercase text-on-surface-variant opacity-40">캠핑유형</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['일반야영장', '자동차야영장', '글램핑', '카라반'].map(t => (
+                      <button key={t} onClick={() => setSelTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
+                        className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all ${selTypes.includes(t) ? 'bg-tertiary text-white border-tertiary shadow-md' : 'bg-white text-on-surface-variant border-outline-variant'}`}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Floor (바닥형태) */}
+                <div className="space-y-2">
+                  <label className="block font-label font-black text-[10px] tracking-widest uppercase text-on-surface-variant opacity-40">바닥형태</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['잔디', '파쇄석', '데크', '자갈', '맨흙'].map(f => (
+                      <button key={f} onClick={() => setSelFloors(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f])}
+                        className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all ${selFloors.includes(f) ? 'bg-primary/80 text-white border-primary shadow-md' : 'bg-white text-on-surface-variant border-outline-variant'}`}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-outline-variant/30 my-2" />
+                {/* Price Slider */}
+                <div className="space-y-2 mb-2">
+                  <div className="relative flex items-center h-10 px-4">
+                    <div className="absolute left-0 flex flex-col items-start">
+                       <span className="font-headline font-black text-secondary text-2xl leading-none">
+                         {(priceLimit / 10000).toLocaleString()} <span className="text-lg">만원</span>
+                       </span>
+                    </div>
+                    <div className="flex-1 text-center">
+                      <span className="text-sm font-black uppercase text-on-surface-variant tracking-[0.2em]">가격 설정</span>
+                    </div>
+                    <div className="absolute right-0 flex flex-col items-end">
+                      {isEditingPriceMax ? (
+                        <input type="number" defaultValue={priceConfig.max} 
+                          onBlur={(e) => { 
+                            const val = Math.max(10000, +e.target.value);
+                            setPriceConfig({ ...priceConfig, max: val }); 
+                            if (priceLimit > val) setPriceLimit(val);
+                            setIsEditingPriceMax(false); 
+                          }}
+                          onKeyDown={(e) => { 
+                            if (e.key === 'Enter') { 
+                              const val = Math.max(10000, +(e.target as HTMLInputElement).value);
+                              setPriceConfig({ ...priceConfig, max: val }); 
+                              if (priceLimit > val) setPriceLimit(val);
+                              setIsEditingPriceMax(false); 
+                            } 
+                          }}
+                          className="w-28 bg-secondary/10 rounded-lg px-3 py-1 text-xl font-black text-secondary/80 focus:outline-none ring-2 ring-secondary/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-right"
+                          autoFocus />
+                      ) : (
+                        <button onClick={() => setIsEditingPriceMax(true)}
+                          className="text-2xl font-black text-secondary/30 hover:text-secondary/60 transition-all">
+                          {(priceConfig.max / 10000).toLocaleString()} <span className="text-sm">만</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="px-6 pt-2 overflow-visible">
+                    <Range step={10000} min={priceConfig.min} max={priceConfig.max} values={[priceLimit]} onChange={v => setPriceLimit(v[0])}
+                      direction={Direction.Right} rtl={false} disabled={false} allowOverlap={false} draggableTrack={false}
+                      label="가격" labelledBy="price-slider"
+                      renderTrack={({ props, children }) => (
+                        <div onMouseDown={props.onMouseDown} onTouchStart={props.onTouchStart} style={{ ...props.style, height: '40px', display: 'flex', width: '100%', touchAction: 'pan-y' }}>
+                          <div ref={props.ref} style={{ height: '14px', width: '100%', borderRadius: '7px', background: getTrackBackground({ values: [priceLimit], colors: ['#9d4f00', '#dcd8bb'], min: priceConfig.min, max: priceConfig.max }), alignSelf: 'center', boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.2)', overflow: 'hidden' }}>{children}</div>
+                        </div>
+                      )}
+                      renderThumb={({ props }) => (
+                        <div {...props} style={{ ...props.style, height: '32px', width: '32px', borderRadius: '50%', backgroundColor: '#fff', border: '5px solid #9d4f00', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', outline: 'none', touchAction: 'none' }} />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div className="h-px bg-outline-variant/30 my-2" />
+
+                {/* Distance Slider */}
+                <div className="space-y-2 mt-4">
+                  <div className="relative flex items-center h-10 px-4">
+                    <div className="absolute left-0 flex flex-col items-start">
+                       <span className="font-headline font-black text-tertiary text-2xl leading-none">
+                         {distLimit === distConfig.max ? '전체' : `${distLimit}분 내`}
+                       </span>
+                    </div>
+                    <div className="flex-1 text-center">
+                      <span className="text-sm font-black uppercase text-on-surface-variant tracking-[0.2em]">소요시간 설정</span>
+                    </div>
+                    {!cachedData?.some(i => i.timeHome) && (
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-error/10 text-error text-[8px] font-black px-2 py-0.5 rounded-full border border-error/20 whitespace-nowrap">
+                        분석 실행이 필요합니다
+                      </div>
+                    )}
+                    <div className="absolute right-0 flex flex-col items-end">
+                      {isEditingDistMax ? (
+                        <input type="number" defaultValue={distConfig.max} 
+                          onBlur={(e) => { 
+                            const val = Math.max(10, +e.target.value);
+                            setDistConfig({ ...distConfig, max: val }); 
+                            if (distLimit > val) setDistLimit(val);
+                            setIsEditingDistMax(false); 
+                          }}
+                          onKeyDown={(e) => { 
+                            if (e.key === 'Enter') { 
+                              const val = Math.max(10, +(e.target as HTMLInputElement).value);
+                              setDistConfig({ ...distConfig, max: val }); 
+                              if (distLimit > val) setDistLimit(val);
+                              setIsEditingDistMax(false); 
+                            } 
+                          }}
+                          className="w-20 bg-tertiary/10 rounded-lg px-3 py-1 text-xl font-black text-tertiary/80 focus:outline-none ring-2 ring-tertiary/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-right"
+                          autoFocus />
+                      ) : (
+                        <button onClick={() => setIsEditingDistMax(true)}
+                          className="text-2xl font-black text-tertiary/30 hover:text-tertiary/60 transition-all">
+                          {distConfig.max} <span className="text-sm">분</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className={`px-6 pt-2 overflow-visible relative ${!cachedData?.some(i => i.timeHome) ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                    {!cachedData?.some(i => i.timeHome) && (
+                      <div className="absolute inset-x-0 inset-y-0 flex items-center justify-center z-10">
+                        <span className="bg-surface-container-highest px-4 py-1.5 rounded-full text-[10px] font-black text-on-surface-variant/60 border border-outline-variant/20 shadow-sm uppercase tracking-widest">분석 후 사용 가능</span>
+                      </div>
+                    )}
+                    <Range step={5} min={distConfig.min} max={distConfig.max} values={[distLimit]} onChange={v => setDistLimit(v[0])}
+                      direction={Direction.Right} rtl={false} disabled={false} allowOverlap={false} draggableTrack={false}
+                      label="거리" labelledBy="dist-slider"
+                      renderTrack={({ props, children }) => (
+                        <div onMouseDown={props.onMouseDown} onTouchStart={props.onTouchStart} style={{ ...props.style, height: '40px', display: 'flex', width: '100%', touchAction: 'pan-y' }}>
+                          <div ref={props.ref} style={{ height: '14px', width: '100%', borderRadius: '7px', background: getTrackBackground({ values: [distLimit], colors: ['#815f00', '#dcd8bb'], min: distConfig.min, max: distConfig.max }), alignSelf: 'center', boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.2)', overflow: 'hidden' }}>{children}</div>
+                        </div>
+                      )}
+                      renderThumb={({ props }) => (
+                        <div {...props} style={{ ...props.style, height: '32px', width: '32px', borderRadius: '50%', backgroundColor: '#fff', border: '5px solid #815f00', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', outline: 'none', touchAction: 'none' }} />
+                      )}
+                    />
+                  </div>
+                </div>
+                {/* Themes (테마별) */}
+                <div className="space-y-2">
+                  <label className="block font-label font-black text-[10px] tracking-widest uppercase text-on-surface-variant opacity-40">테마별</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['일출명소', '일몰명소', '수상레저', '항공레저', '낚시', '액티비티', '봄꽃여행', '여름물놀이', '가을단풍명소', '겨울눈꽃명소'].map(t => (
+                      <button key={t} onClick={() => setSelThemes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
+                        className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all ${selThemes.includes(t) ? 'bg-secondary/80 text-white border-secondary shadow-md' : 'bg-white text-on-surface-variant border-outline-variant'}`}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Facilities (부대시설) */}
+                <div className="space-y-2">
+                  <label className="block font-label font-black text-[10px] tracking-widest uppercase text-on-surface-variant opacity-40">부대시설</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['전기', '무선인터넷', '장작판매', '온수', '트램폴린', '물놀이장', '놀이터', '산책로', '운동장', '마트.편의점'].map(f => (
+                      <button key={f} onClick={() => setSelFacs(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f])}
+                        className={`px-3 py-2 rounded-xl text-[11px] font-black border transition-all ${selFacs.includes(f) ? 'bg-tertiary text-white border-tertiary shadow-md' : 'bg-surface-container-high/50 border-outline-variant/40 text-on-surface-variant/60 hover:bg-surface-container-high'}`}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Others (기타기분) */}
+                <div className="space-y-2">
+                  <label className="block font-label font-black text-[10px] tracking-widest uppercase text-on-surface-variant opacity-40">기타정보</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['개인 트레일러 입장가능', '개인 캠핑카 입장가능', '반려동물 동반가능'].map(o => (
+                      <button key={o} onClick={() => setSelOthers(prev => prev.includes(o) ? prev.filter(x => x !== o) : [...prev, o])}
+                        className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all ${selOthers.includes(o) ? 'bg-on-surface text-surface border-on-surface shadow-md' : 'bg-white text-on-surface-variant border-outline-variant'}`}>
+                        {o}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-outline-variant/30 my-2" />
+
+                {/* Tags (태그로 찾는 나만의 �                </div>
+              </section>
+            </div>
+
+            {/* ── Fixed Bottom Bar ── */}
+            <div className={`${isDebugMode ? 'absolute' : 'fixed'} bottom-[calc(64px+var(--safe-bottom,0px)+12px)] left-0 right-0 z-[100] px-6 max-w-lg mx-auto lg:max-w-2xl pointer-events-none`}>
+              <div className="flex gap-4 bg-white/60 backdrop-blur-3xl p-4 rounded-[2.8rem] border border-white/30 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.2)] pointer-events-auto">
+                <button onClick={handleResetFilters}
+                  className="flex flex-col items-center justify-center w-20 h-20 rounded-[2.2rem] bg-white/80 text-on-surface-variant transition-all hover:bg-white active:scale-95 group border border-outline-variant/10 shadow-sm shrink-0">
+                  {ICON('refresh', false, 'text-2xl group-active:rotate-180 transition-transform duration-500 text-on-surface-variant/40')}
+                  <span className="text-[9px] font-black uppercase tracking-tighter mt-1 opacity-40">초기화</span>
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    if (loading) {
+                      alert("현재 분석이 진행 중입니다. 잠시만 기다려 주세요!");
+                      return;
+                    }
+                    setActiveTab('results');
+                    processItems(cachedData || []);
+                  }} 
+                  disabled={loading}
+                  className="flex-1 vibe-gradient text-white font-headline font-extrabold rounded-[2.2rem] chunky-shadow active:scale-95 transition-all disabled:opacity-80 flex flex-col items-center justify-center relative overflow-hidden group shadow-xl h-20">
+                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                  {loading ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span className="text-lg">분석 중...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center leading-tight gap-0.5">
+                      <div className="flex items-center gap-2">
+                        {ICON('travel_explore', false, 'text-2xl')} 
+                        <span className="text-xl">캠핑장 찾기</span>
+                      </div>
+                      <span className="text-[10px] font-bold opacity-70 tracking-tight uppercase">Discover Your Next Spot</span>
+                    </div>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+ify-center space-y-1 text-base relative overflow-hidden group shadow-xl">
+                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>분석 중...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center leading-tight">
+                      <div className="flex items-center gap-2">
+                        {ICON('travel_explore', false, 'text-xl')} 
+                        <span className="text-lg">캠핑장 찾기</span>
+                      </div>
+                      <span className="text-[10px] font-bold opacity-70 tracking-tight">선택한 필터로 결과 보기</span>
+                    </div>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW: RESULTS LIST */}
+        {activeTab === 'results' && (
+          <div className="animate-in fade-in duration-300 space-y-6">
+            {/* ── Search Bar (Result Filter) ── */}
+            <section className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50">
+                {ICON('search', false, 'text-xl')}
+              </div>
+              <input
+                type="text"
+                placeholder="결과 내 검색 (이름, 주소)..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-white/50 backdrop-blur-md rounded-2xl pl-12 pr-4 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border border-white/20 shadow-sm"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50">
+                  {ICON('close', false, 'text-lg')}
+                </button>
+              )}
+            </section>
+
+            {/* ── Error ── */}
+            {error && (
+              <div className="bg-error-container/20 border border-error/30 text-on-error-container px-5 py-4 rounded-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4">
+                <div className="flex items-center gap-3">
+                  {ICON('error', false, 'text-xl text-error')}
+                  <p className="text-sm font-medium">{error}</p>
+                </div>
+                <button onClick={() => setError(null)} className="text-error/50 hover:text-error transition-colors">
+                  {ICON('close', false, 'text-lg')}
+                </button>
+              </div>
+            )}
+
+            {/* ── Results ── */}
+            {loading ? (
+              <section className="flex flex-col items-center justify-center py-20 space-y-6">
+                 <div className="relative">
+                   <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                   <div className="absolute inset-0 flex items-center justify-center">
+                     {ICON('search', true, 'text-2xl text-primary animate-pulse')}
+                   </div>
+                 </div>
+                 <div className="text-center space-y-2">
+                   <h3 className="font-headline font-black text-xl text-primary uppercase tracking-widest animate-pulse">분석 및 검색 중...</h3>
+                   <p className="text-sm font-bold text-on-surface-variant/60">{loadingStatus || '잠시만 기다려 주세요'}</p>
+                 </div>
+                 <div className="w-full max-w-xs bg-surface-container rounded-full h-1.5 overflow-hidden">
+                   <div className="h-full bg-primary animate-shimmer w-1/2" />
+                 </div>
+              </section>
+            ) : campgrounds.length > 0 ? (
+              <section className="space-y-4">
+                <div className="flex justify-between items-end px-1">
+                  <h3 className="font-headline font-extrabold text-2xl tracking-tight">캠핑장</h3>
+                  <span className="text-on-surface-variant text-sm font-bold">{campgrounds.length}곳</span>
+                </div>
+                <div className="grid grid-cols-1 gap-6 pb-24">
+                  {campgrounds.map((camp, idx) => (
+                     <CampCard key={camp.id || idx} camp={camp} idx={idx} targetCamps={targetCamps} toggleTargetCamp={toggleTargetCamp} />
+                  ))}
+                </div>
+              </section>
+            ) : !error && (
+              <div className="py-20 flex flex-col items-center justify-center text-on-surface-variant/30 space-y-4">
+                {ICON('error_outline', false, 'text-6xl')}
+                <p className="font-bold">검색 결과가 없습니다.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VIEW: FAVORITES LIST */}
+        {activeTab === 'favorites' && (
+          <div className="animate-in fade-in duration-300 space-y-6">
+            <div className="flex justify-between items-end px-1">
+              <h3 className="font-headline font-extrabold text-2xl tracking-tight text-secondary">즐겨찾기</h3>
+              <span className="text-on-surface-variant text-sm font-bold">{targetCamps.length}곳</span>
+            </div>
+            {targetCamps.length === 0 ? (
+              <div className="bg-surface-container p-12 rounded-2xl border-2 border-dashed border-outline-variant flex flex-col items-center justify-center text-center space-y-4">
+                <div className="w-16 h-16 bg-surface-container-highest rounded-full flex items-center justify-center text-on-surface-variant/30">
+                  {ICON('favorite_border', false, 'text-4xl')}
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-on-surface-variant">저장된 캠핑장이 없습니다.</p>
+                  <p className="text-xs text-on-surface-variant/60">마음에 드는 캠핑장에 하트를 눌러보세요!</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 pb-24">
+                {cachedData && cachedData.filter(i => targetCamps.some(t => t.name === i.nm)).map((camp, idx) => (
+                   <CampCard key={`fav-${camp.id || idx}`} camp={camp} idx={idx} targetCamps={targetCamps} toggleTargetCamp={toggleTargetCamp} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && !error && activeTab === 'search' && campgrounds.length === 0 && (
+          <div className="h-[20vh] flex flex-col items-center justify-center text-on-surface-variant/40 space-y-3">
+            {ICON('forest', true, 'text-[4rem]')}
+            <p className="font-headline font-bold text-lg italic">자연을 탐험할 준비가 되셨나요?</p>
+          </div>
+        )}
+      </main>
+
+      {/* ── Settings Modal ── */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsSettingsOpen(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative bg-surface-container-lowest w-full max-w-lg rounded-t-[3rem] shadow-2xl h-[92vh] flex flex-col pb-[var(--safe-bottom,0px)] overflow-hidden">
+              
+              <div className="flex justify-between items-center px-8 pb-4" style={{ paddingTop: 'calc(var(--safe-top, 0px) + 1.5rem)' }}>
+                <h2 className="font-headline font-black text-2xl flex items-center gap-2 text-primary">
+                  {ICON('settings', true, 'text-2xl text-primary')} 시스템 설정
+                </h2>
+                <button onClick={() => setIsSettingsOpen(false)} className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+                  {ICON('close', false, 'text-lg')}
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 no-scrollbar">
+                <div className="grid grid-cols-2 gap-3">
+                  <div onClick={() => { setEditSec('home'); setTmpHomeUrl(''); setTmpHomeCoords(homeCoords); setActiveSubModal('edit'); }}
+                    className="bg-white/60 border border-outline-variant/20 rounded-2xl px-4 py-4 flex items-center justify-between cursor-pointer hover:bg-white transition-all chunky-shadow active:scale-[0.98]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        {ICON('home', true, 'text-primary text-base')}
+                      </div>
+                      <p className="text-[11px] font-black text-on-surface-variant uppercase leading-none">집</p>
+                    </div>
+                    <p className="text-[11px] font-black text-primary leading-none">설정</p>
+                  </div>
+
+                  <div onClick={() => { setEditSec('work'); setTmpWorkUrl(''); setTmpWorkCoords(workCoords); setActiveSubModal('edit'); }}
+                    className="bg-white/60 border border-outline-variant/20 rounded-2xl px-4 py-4 flex items-center justify-between cursor-pointer hover:bg-white transition-all chunky-shadow active:scale-[0.98]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
+                        {ICON('work', true, 'text-secondary text-base')}
+                      </div>
+                      <p className="text-[11px] font-black text-on-surface-variant uppercase leading-none">직장</p>
+                    </div>
+                    <p className="text-[11px] font-black text-secondary leading-none">설정</p>
+                  </div>
+
+                  <div className="col-span-2 bg-surface-container rounded-2xl px-5 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        {ICON('data_info_alert', true, 'text-xl')}
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest leading-none">현재 DB 버전</p>
+                        <p className="text-sm font-black text-on-surface leading-none">{dbVersion}</p>
+                      </div>
+                    </div>
+                    <button onClick={loadData} className="bg-primary/10 text-primary text-[10px] font-black px-4 py-2 rounded-lg active:scale-95 transition-all">업데이트 확인</button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-[0.2em] px-2 pt-2">데이터 관리</h3>
+                  <div className="flex gap-3">
+                    <button onClick={exportDB} className="flex-1 bg-secondary/10 text-secondary text-xs font-black py-5 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all chunky-shadow">
+                      {ICON('download', true, 'text-lg')} DB 내보내기
+                    </button>
+                    <label className="flex-1 bg-primary/10 text-primary text-xs font-black py-5 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all chunky-shadow cursor-pointer">
+                      {ICON('upload', true, 'text-lg')} DB 가져오기
+                      <input type="file" accept=".json" onChange={importDB} className="hidden" />
+                    </label>
+                  </div>
+                  
+                  <button onClick={runFullAnalysis}
+                    className="w-full vibe-gradient-alt text-white text-sm font-black py-6 rounded-3xl flex flex-col items-center justify-center chunky-shadow active:scale-95 transition-all shadow-xl shadow-secondary/10 mt-2">
+                    <div className="flex items-center gap-3">
+                      {ICON('route', true, 'text-2xl')} <span className="text-lg">주행시간 전수 분석 실행</span>
+                    </div>
+                    <span className="text-[10px] opacity-90 mt-1.5 font-bold tracking-tight">* 약 1~5분 소요 | 내 위치 기준 전국 경로 계산</span>
+                  </button>
+                </div>
+
+                <div className="pt-6 space-y-3">
+                  <h3 className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-[0.2em] px-2">개발자 옵션</h3>
+                  <div className="bg-surface-container rounded-2xl p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-tertiary/10 flex items-center justify-center shrink-0">
+                        {ICON('developer_mode', true, 'text-xl text-tertiary')}
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-black text-on-surface">기기 미리보기 (디버그)</p>
+                        <p className="text-[10px] font-bold text-on-surface-variant/60">모바일 비율 시뮬레이터 활성화</p>
+                      </div>
+                    </div>
+                    <button onClick={() => { setIsDebugMode(prev => !prev); setIsSettingsOpen(false); }}
+                      className={`w-12 h-6 rounded-full transition-all relative ${isDebugMode ? 'bg-primary' : 'bg-outline-variant'}`}>
+                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${isDebugMode ? 'left-7' : 'left-1'}`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-10 py-8 border-t border-outline-variant/30 bg-surface-container-lowest">
+                <button onClick={() => setIsSettingsOpen(false)}
+                  className="w-full bg-on-surface text-surface font-headline font-black py-6 rounded-full active:scale-95 transition-all tracking-[0.2em] shadow-2xl text-lg">
+                  설정 완료
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeSubModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setActiveSubModal(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl flex flex-col gap-6">
+              
+              <div className="flex flex-col gap-2 border-b border-outline-variant/20 pb-4">
+                <h3 className="font-headline font-black text-xl flex items-center gap-2">
+                  {ICON('edit_square', true, 'text-primary')} {
+                    editSec === 'home' ? '집 위치' :
+                    editSec === 'work' ? '직장 위치' : '정보'
+                  } 수정
+                </h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto max-h-[50vh] no-scrollbar space-y-5">
+                {(editSec === 'home' || editSec === 'work') && (
+                  <div className="bg-primary/5 rounded-2xl p-4 space-y-3 border border-primary/10">
+                    <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">나의 좌표 프리뷰</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white/80 rounded-xl px-3 py-2.5 flex items-center justify-between">
+                        <span className="text-[9px] font-black text-secondary">LAT</span>
+                        <span className="text-sm font-black text-primary">
+                          {(editSec === 'home' ? tmpHomeCoords : tmpWorkCoords)?.lat.toFixed(6) || '미설정'}
+                        </span>
+                      </div>
+                      <div className="bg-white/80 rounded-xl px-3 py-2.5 flex items-center justify-between">
+                        <span className="text-[9px] font-black text-secondary">LNG</span>
+                        <span className="text-sm font-black text-primary">
+                          {(editSec === 'home' ? tmpHomeCoords : tmpWorkCoords)?.lng.toFixed(6) || '미설정'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  {(editSec === 'home' || editSec === 'work') && (
+                    <div className="space-y-2">
+                       <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-black uppercase text-primary">구글 맵 공유 URL</label>
+                          <a href="https://www.google.com/maps" target="_blank" rel="noreferrer" 
+                            className="text-[9px] font-black text-secondary flex items-center gap-1 bg-secondary/5 px-2 py-1 rounded-lg border border-secondary/10">
+                            {ICON('map', true, 'text-[10px]')} 구글맵 열기
+                          </a>
+                       </div>
+                       <input type="text" value={editSec === 'home' ? tmpHomeUrl : tmpWorkUrl}
+                         onChange={e => editSec === 'home' ? setTmpHomeUrl(e.target.value) : setTmpWorkUrl(e.target.value)}
+                         className="w-full bg-surface-container rounded-2xl p-4 text-xs font-bold focus:outline-none border border-outline-variant/20 shadow-inner" placeholder="구글맵 URL을 입력하세요" autoFocus />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button onClick={() => setActiveSubModal(null)} className="flex-1 bg-surface-container text-on-surface-variant font-black py-4 rounded-2xl active:scale-95 transition-all text-sm">취소</button>
+
+                {(editSec === 'home' || editSec === 'work') && (
+                  <button 
+                    onClick={() => {
+                      const url = editSec === 'home' ? tmpHomeUrl : tmpWorkUrl;
+                      const c = extractLatLng(url);
+                      if (c) {
+                        editSec === 'home' ? setTmpHomeCoords(c) : setTmpWorkCoords(c);
+                      } else {
+                        alert('URL에서 좌표를 추출할 수 없습니다.');
+                      }
+                    }}
+                    className="flex-1 bg-secondary text-white font-black py-4 rounded-2xl active:scale-95 transition-all text-sm shadow-lg shadow-secondary/20"
+                  >
+                    확인
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => {
+                    if (editSec === 'home' && tmpHomeCoords) setHomeCoords(tmpHomeCoords);
+                    if (editSec === 'work' && tmpWorkCoords) setWorkCoords(tmpWorkCoords);
+                    setActiveSubModal(null);
+                  }}
+                  className="flex-1 bg-primary text-white font-black py-4 rounded-2xl active:scale-95 transition-all text-sm shadow-lg shadow-primary/20"
+                >
+                  저장
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isSystemTaskActive && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-xl" />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="relative bg-surface-container-lowest w-full max-w-sm rounded-[3rem] p-10 shadow-3xl text-center flex flex-col items-center gap-8">
+              
+              <div className="relative w-32 h-32 flex items-center justify-center">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-surface-container-highest" />
+                  <motion.circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                    strokeDasharray={364.4}
+                    initial={{ strokeDashoffset: 364.4 }}
+                    animate={{ strokeDashoffset: 364.4 - (364.4 * systemTaskProgress) / 100 }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
+                    className="text-primary" strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center flex-col">
+                  <span className="text-3xl font-black text-primary">{systemTaskProgress}%</span>
+                </div>
+              </div>
+
+              <div className="space-y-4 w-full">
+                <h3 className="font-headline font-black text-2xl text-on-surface">분석 진행 중</h3>
+                <div className="bg-surface-container rounded-2xl p-4 min-h-[4rem] flex items-center justify-center">
+                  <p className="text-sm font-bold text-on-surface-variant">
+                    {systemTaskStatus}
+                  </p>
+                </div>
+              </div>
+
+              {isSystemTaskComplete ? (
+                <button onClick={() => setIsSystemTaskActive(false)}
+                  className="w-full bg-primary text-on-primary font-headline font-black py-5 rounded-2xl active:scale-95 transition-all shadow-xl shadow-primary/20 tracking-widest text-lg">
+                  확인
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 text-primary/60 font-black animate-pulse uppercase tracking-[0.2em] text-[10px]">
+                  {ICON('sync', true, 'text-xs animate-spin')} Please wait
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <div className="fixed bottom-[calc(64px+var(--safe-bottom,0px))] left-1/2 -translate-x-1/2 z-[80] w-full max-w-md px-4 pb-2 pointer-events-none">
+        <div className="grid grid-cols-[1fr_56px] gap-2 pointer-events-auto">
+          <nav className="flex gap-1 bg-white/90 backdrop-blur-xl border border-outline-variant/30 p-1.5 rounded-[1.8rem] shadow-2xl h-14 w-full overflow-hidden">
+            {[
+              { id: 'search', icon: 'search', label: '검색' },
+              { id: 'results', icon: 'format_list_bulleted', label: '캠핑장' },
+              { id: 'favorites', icon: 'favorite', label: '즐겨찾기' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 rounded-xl text-[8px] font-black tracking-tighter transition-all relative ${
+                  activeTab === tab.id 
+                    ? 'bg-primary/10 text-primary z-10' 
+                    : 'text-on-surface-variant/30 hover:text-on-surface-variant/50'
+                }`}
+              >
+                {ICON(tab.icon, activeTab === tab.id, 'text-lg')}
+                <span className="block leading-none uppercase">{tab.label}</span>
+                {tab.id === 'results' && campgrounds.length > 0 && (
+                  <span className={`absolute -top-1 -right-1 text-white text-[8px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm ${activeTab === 'results' ? 'bg-secondary' : 'bg-primary'}`}>
+                    {campgrounds.length > 99 ? '99+' : campgrounds.length}
+                  </span>
+                )}
+                {tab.id === 'favorites' && targetCamps.length > 0 && (
+                  <span className={`absolute -top-1 -right-1 text-white text-[8px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm ${activeTab === 'favorites' ? 'bg-primary' : 'bg-secondary'}`}>
+                    {targetCamps.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+          
+          <div className="w-14 h-14 flex items-center justify-center">
+            <AnimatePresence>
+              {showScrollTop && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  exit={{ opacity: 0, scale: 0.5, rotate: 45 }}
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="w-14 h-14 bg-white/90 backdrop-blur-xl border border-outline-variant/30 text-primary rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  {ICON('arrow_upward', false, 'text-xl')}
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom Ad Banner (Placeholder) ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-[80] bg-white border-t border-outline-variant/30 flex flex-col items-center justify-center pt-2 pb-[calc(var(--safe-bottom,0px)+8px)] shadow-[0_-8px_24px_rgba(0,0,0,0.05)]">
+        <div className="w-full max-w-md px-4 flex justify-between items-center h-12 bg-surface-container-high/50 rounded-xl">
+           <span className="text-[10px] font-black text-on-surface-variant opacity-20 uppercase tracking-[0.3em]">ADVERTISEMENT</span>
+           <span className="text-xs font-black text-primary tracking-widest">채서나라</span>
+           <span className="text-[10px] font-black text-on-surface-variant opacity-20 uppercase tracking-[0.3em]">ADVERTISEMENT</span>
+        </div>
+      </div>
+      </div>
+    </DeviceSimulator>
+  );
+}
